@@ -1,0 +1,91 @@
+# Skills — mandatory per area of code
+
+Skills live under [`.agents/skills/`](.agents/skills/). Read the relevant
+`SKILL.md` **before** writing, reviewing, or refactoring code in its area;
+do not rely on training-data defaults.
+
+## Any application code (Next.js / React)
+
+Always apply
+[`vercel-react-best-practices`](.agents/skills/vercel-react-best-practices/SKILL.md).
+It is the Next.js skill for this project: 40+ performance rules under
+`rules/`, prioritized by impact (waterfalls and bundle size are critical,
+then server-side caching, re-render hygiene, micro-optimizations). The
+consolidated document is `AGENTS.md` inside that skill folder.
+
+## API code (route handlers, server actions, services, data layer)
+
+In addition to the rule above, apply both:
+
+- [`gof-patterns`](.agents/skills/gof-patterns/SKILL.md) — language-agnostic
+  reference for all 23 GoF patterns; start from `pattern-selection.md` when
+  choosing a pattern for a design problem.
+- [`metaskills`](.agents/skills/metaskills/) — Metarhia conventions, one
+  skill per folder:
+  - `js-conventions` — JS/TS style and naming
+  - `error-handling` — error handling conventions
+  - `js-gof` — GoF patterns in idiomatic JavaScript (pair with
+    `gof-patterns` above: GoF for the *what*, `js-gof` for the *how*)
+  - `data-structures`, `js-data-structures`,
+    `metautil-data-structures` — choosing and implementing collections
+  - `npm-publish` — only when preparing a package for release
+
+`.agents/skills/metaskills` is a symlink into
+`node_modules/metaskills/skills`. After a fresh `npm install` run
+`npx metaskills antigravity` to recreate it. The other two skills are
+vendored and pinned in `skills-lock.json`; do not hand-edit them.
+
+# Figma MCP — source of truth for UI
+
+Designs live in Figma. The project MCP config ([`.mcp.json`](.mcp.json))
+registers `figma-desktop`, the Dev Mode MCP server of the Figma desktop
+app at `http://127.0.0.1:3845/mcp`. **Use it for every task that
+implements, reviews, or changes UI**: before writing a screen or
+component, pull the design from Figma (`get_design_context`,
+`get_screenshot`, `get_metadata`, `get_variable_defs`) and build to it;
+do not invent layout, copy, colors, or spacing that the design already
+defines. Load the `figma-design-to-code` skill (from the `figma` Claude
+Code plugin) before calling `get_design_context`.
+
+How this server behaves:
+
+- It serves the **current selection in Figma Desktop**, and ignores the
+  `fileKey` argument. The user must have the file open and the target
+  frame selected. If a call returns "This resource couldn't be accessed",
+  ask the user to open the file and select the frame, then retry — do not
+  fall back to guessing the design.
+- It is read-only (design context, screenshots, metadata, variables,
+  motion, FigJam). It cannot create or edit designs.
+- If the server is unreachable, Figma Desktop is not running; ask the user
+  to start it. The remote Figma MCP (`https://mcp.figma.com/mcp`) is a
+  fallback but requires **edit** access to the file for the signed-in
+  account, which the ZAG files currently do not grant.
+
+Project design files:
+
+- "Додаток ZAG" — `MXOBup4Ilaxy5WE8wRyevL` (mobile app screens, e.g.
+  `8:3824` "Home UA")
+- "ZAG Інтерактив на фасаді 2025" — `8EJBwH8nOkFYKZPRI7Su1z`
+
+# Current-state log
+
+Maintain [`docs/current-state.md`](docs/current-state.md) as a running
+handoff note between agent sessions. At the **end of every working
+session** (before reporting the task complete), prepend a new entry to the
+top of the file with:
+
+- **Timestamp** — ISO-8601 UTC of when the session ended (e.g.
+  `2026-06-30T14:32:00Z`).
+- **Agent / model** — which agent or model performed the work (e.g.
+  `Claude Fable 5.1`).
+- **What changed** — 1–3 bullets summarizing the files touched and the
+  outcome (shipped feature, partial progress, investigation only).
+- **Next step** — the single most useful thing the next session should
+  pick up, or `none` if the work is finished.
+- **Blockers / open questions** — anything a human needs to decide before
+  the next step is viable; omit the line if there are none.
+
+At the **start of every session**, read the top entry of
+`docs/current-state.md` first so you inherit context from the previous
+agent. Keep entries terse — this file is a handoff log, not a changelog;
+older entries can be pruned once they no longer aid handoff.
