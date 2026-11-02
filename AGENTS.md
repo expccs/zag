@@ -57,15 +57,38 @@ How this server behaves:
 - It is read-only (design context, screenshots, metadata, variables,
   motion, FigJam). It cannot create or edit designs.
 - If the server is unreachable, Figma Desktop is not running; ask the user
-  to start it. The remote Figma MCP (`https://mcp.figma.com/mcp`) is a
-  fallback but requires **edit** access to the file for the signed-in
-  account, which the ZAG files currently do not grant.
+  to start it. The remote Figma MCP (`plugin:figma:figma`,
+  `https://mcp.figma.com/mcp`) works read-only on the ZAG files once the
+  user authenticates via `/mcp`, and takes `fileKey` + `nodeId` directly
+  (no selection needed). It is metered: the Starter plan has a monthly
+  tool-call cap, so request small nodes, not whole screens, and never
+  retry a call that timed out.
+
+Extracted tokens live in [`docs/design/`](docs/design/): `design-system.md`
+(colors, typography, liquid-glass component, buttons, per-screen layout),
+`tokens.json`, `frames.md` (node-id index) and `screens/` (reference
+screenshots). Read `design-system.md` before styling anything; go to Figma
+for the exact frame you implement and for anything marked **[проверить]**.
 
 Project design files:
 
 - "Додаток ZAG" — `MXOBup4Ilaxy5WE8wRyevL` (mobile app screens, e.g.
-  `8:3824` "Home UA")
+  `8:3824` "Home UA"). Its Starter team has no MCP quota left; use the
+  copy `w3H4qazUL5GxhIm3MXnKzP` in the Pro team "grif energy" (same node
+  ids) for remote MCP calls.
 - "ZAG Інтерактив на фасаді 2025" — `8EJBwH8nOkFYKZPRI7Su1z`
+
+# Backend modules — reuse, do not reinvent
+
+[`docs/backend/shared-modules.md`](docs/backend/shared-modules.md) is the
+result of merging the server code of two earlier Expolight projects
+(tv-tower-back, kutaisi-public). It fixes the CCS client (ExpoLight Cloud
+Control System), application state flags, geo-fence, TouchDesigner client
+and session queue, and defines the Socket.IO and TouchDesigner protocols
+for ZAG. The typed, tested TypeScript lives in
+[`docs/backend/reference/`](docs/backend/reference/). When bootstrapping
+the server, copy those files instead of writing new ones; read the
+document before changing any of them.
 
 # Current-state log
 

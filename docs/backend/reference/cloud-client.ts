@@ -1,0 +1,364 @@
+import { EventEmitter } from 'node:events';
+import { io, Socket } from 'socket.io-client';
+
+export const CCS_DEFAULT_URL = 'https://admin.expolightcontrols.net';
+
+export interface CloudCredentials {
+  login: string;
+  password: string;
+  project?: string;
+}
+
+export interface LoginData {
+  accessToken: string;
+  projectUID: string;
+  latitude: number;
+  longitude: number;
+  timezone: string;
+  accessLevel: number;
+}
+
+export interface ProgramReference {
+  projectUID: string;
+  groupID: string;
+  programID: string;
+  params?: number[];
+}
+
+export interface CommandProgram {
+  _id: string;
+  name: string;
+  type: 'COMMAND' | string;
+  state: { value: number };
+}
+
+export interface ProgramGroup {
+  _id: string;
+  name: string;
+  projectID: string;
+  main: boolean;
+  programs: CommandProgram[];
+}
+
+export interface ProgramStateChange {
+  programID: string;
+  value: number;
+}
+
+export interface GeoCoordinates {
+  latitude: number;
+  longitude: number;
+}
+
+export interface CloudEvents {
+  login: [data: LoginData];
+  connect: [];
+  disconnect: [reason: string];
+  reconnect: [attempt: number];
+  stateChange: [change: ProgramStateChange];
+}
+
+export type Logger = Pick<Console, 'log' | 'warn' | 'error'>;
+
+export interface CloudGateway extends EventEmitter<CloudEvents> {
+  readonly projectUID: string | null;
+  readonly location: GeoCoordinates | null;
+  readonly isConnected: boolean;
+  connect(): Promise<void>;
+  getPrograms(): Promise<ProgramGroup[]>;
+  execCommand(reference: ProgramReference): Promise<unknown>;
+  close(): void;
+}
+
+export interface CloudClientOptions {
+  credentials: CloudCredentials;
+  serverUrl?: string;
+  execEnabled?: boolean;
+  connectTimeoutMs?: number;
+  loginRetryBaseMs?: number;
+  loginRetryMaxMs?: number;
+  logger?: Logger;
+}
+
+const DEFAULT_CONNECT_TIMEOUT_MS = 30_000;
+const DEFAULT_LOGIN_RETRY_BASE_MS = 1_000;
+const DEFAULT_LOGIN_RETRY_MAX_MS = 30_000;
+const SOCKET_TIMEOUT_MS = 20_000;
+const SOCKET_RECONNECT_MIN_MS = 1_000;
+const SOCKET_RECONNECT_MAX_MS = 5_000;
+
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+const postJson = async <T>(url: string, body: unknown): Promise<T> => {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(`CCS ${url} responded ${response.status}`);
+  }
+  return (await response.json()) as T;
+};
+
+export class CloudClient
+  extends EventEmitter<CloudEvents>
+  implements CloudGateway
+{
+  projectUID: string | null = null;
+  location: GeoCoordinates | null = null;
+  timezone: string | null = null;
+
+  private socket: Socket | null = null;
+  private project: string | undefined;
+  private refreshing: Promise<void> | null = null;
+  private closed = false;
+
+  private readonly serverUrl: string;
+  private readonly credentials: CloudCredentials;
+  private readonly execEnabled: boolean;
+  private readonly connectTimeoutMs: number;
+  private readonly loginRetryBaseMs: number;
+  private readonly loginRetryMaxMs: number;
+  private readonly logger: Logger;
+
+  constructor(options: CloudClientOptions) {
+    super();
+    this.credentials = options.credentials;
+    this.project = options.credentials.project;
+    this.serverUrl = options.serverUrl ?? CCS_DEFAULT_URL;
+    this.execEnabled = options.execEnabled ?? true;
+    this.connectTimeoutMs =
+      options.connectTimeoutMs ?? DEFAULT_CONNECT_TIMEOUT_MS;
+    this.loginRetryBaseMs =
+      options.loginRetryBaseMs ?? DEFAULT_LOGIN_RETRY_BASE_MS;
+    this.loginRetryMaxMs =
+      options.loginRetryMaxMs ?? DEFAULT_LOGIN_RETRY_MAX_MS;
+    this.logger = options.logger ?? console;
+  }
+
+  get isConnected(): boolean {
+    return this.socket !== null && this.socket.connected;
+  }
+
+  async connect(): Promise<void> {
+    if (this.socket) throw new Error('CloudClient is already connected');
+    this.closed = false;
+    const login = await this.loginWithRetry();
+    const socket = this.createSocket(login.accessToken);
+    this.socket = socket;
+    await this.waitForConnect(socket);
+  }
+
+  async getPrograms(): Promise<ProgramGroup[]> {
+    const socket = this.requireSocket();
+    const response = (await socket.emitWithAck('getPrograms', {
+      projectUID: this.project,
+    })) as { data: ProgramGroup[] };
+    return response.data;
+  }
+
+  async execCommand(reference: ProgramReference): Promise<unknown> {
+    if (!this.execEnabled) {
+      this.logger.log('[ccs] dry-run execCommand', reference);
+      return null;
+    }
+    const socket = this.requireSocket();
+    return socket.emitWithAck('runProgram', reference);
+  }
+
+  close(): void {
+    this.closed = true;
+    const socket = this.socket;
+    this.socket = null;
+    if (!socket) return;
+    socket.removeAllListeners();
+    socket.io.removeAllListeners();
+    socket.disconnect();
+  }
+
+  private requireSocket(): Socket {
+    if (!this.socket || !this.socket.connected) {
+      throw new Error('CCS socket is not connected');
+    }
+    return this.socket;
+  }
+
+  private async resolveProject(): Promise<string> {
+    if (this.project) return this.project;
+    const projects = await postJson<Array<{ projectUID: string }>>(
+      `${this.serverUrl}/api/user/projects`,
+      this.credentials,
+    );
+    const first = projects[0];
+    if (!first) throw new Error('CCS account has no projects');
+    this.project = first.projectUID;
+    return first.projectUID;
+  }
+
+  private async login(): Promise<LoginData> {
+    const project = await this.resolveProject();
+    const data = await postJson<LoginData>(
+      `${this.serverUrl}/api/user/app/auth`,
+      {
+        login: this.credentials.login,
+        password: this.credentials.password,
+        project,
+      },
+    );
+    this.projectUID = project;
+    this.timezone = data.timezone;
+    this.location = { latitude: data.latitude, longitude: data.longitude };
+    this.emit('login', data);
+    return data;
+  }
+
+  private async loginWithRetry(): Promise<LoginData> {
+    let delayMs = this.loginRetryBaseMs;
+    for (;;) {
+      try {
+        return await this.login();
+      } catch (error) {
+        if (this.closed) throw error;
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn(
+          `[ccs] login failed: ${message}; retry in ${delayMs}ms`,
+        );
+        await sleep(delayMs);
+        delayMs = Math.min(delayMs * 2, this.loginRetryMaxMs);
+      }
+    }
+  }
+
+  private createSocket(token: string): Socket {
+    const socket = io(`${this.serverUrl}/users`, {
+      path: '/socket',
+      transports: ['websocket'],
+      reconnection: true,
+      reconnectionDelay: SOCKET_RECONNECT_MIN_MS,
+      reconnectionDelayMax: SOCKET_RECONNECT_MAX_MS,
+      reconnectionAttempts: Infinity,
+      timeout: SOCKET_TIMEOUT_MS,
+      auth: { token },
+    });
+
+    socket.on('connect', () => {
+      socket.emit('joinRoom', { room: this.project });
+      this.emit('connect');
+    });
+    socket.on('disconnect', (reason) => {
+      this.emit('disconnect', reason);
+    });
+    socket.on('connect_error', (error) => {
+      this.handleConnectError(error);
+    });
+    socket.on('programStateChange', (change: ProgramStateChange) => {
+      this.emit('stateChange', change);
+    });
+    socket.io.on('reconnect', (attempt) => {
+      this.emit('reconnect', attempt);
+    });
+    return socket;
+  }
+
+  private handleConnectError(error: Error): void {
+    this.logger.warn(`[ccs] connect_error: ${error.message}`);
+    if (this.closed || this.refreshing) return;
+    this.refreshing = this.refreshToken().finally(() => {
+      this.refreshing = null;
+    });
+  }
+
+  private async refreshToken(): Promise<void> {
+    const login = await this.loginWithRetry();
+    if (this.socket) this.socket.auth = { token: login.accessToken };
+  }
+
+  private waitForConnect(socket: Socket): Promise<void> {
+    if (socket.connected) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const onConnect = () => {
+        clearTimeout(timer);
+        resolve();
+      };
+      const timer = setTimeout(() => {
+        socket.off('connect', onConnect);
+        reject(
+          new Error(`CCS socket did not connect in ${this.connectTimeoutMs}ms`),
+        );
+      }, this.connectTimeoutMs);
+      socket.once('connect', onConnect);
+    });
+  }
+}
+
+export interface FakeCloudOptions {
+  projectUID?: string;
+  location?: GeoCoordinates;
+  groups?: ProgramGroup[];
+  logger?: Logger;
+}
+
+export class FakeCloudClient
+  extends EventEmitter<CloudEvents>
+  implements CloudGateway
+{
+  readonly projectUID: string;
+  readonly location: GeoCoordinates;
+  readonly commands: ProgramReference[] = [];
+
+  private connected = false;
+  private readonly groups: ProgramGroup[];
+  private readonly logger: Logger;
+
+  constructor(options: FakeCloudOptions = {}) {
+    super();
+    this.projectUID = options.projectUID ?? 'offline-project';
+    this.location = options.location ?? { latitude: 0, longitude: 0 };
+    this.groups = options.groups ?? [];
+    this.logger = options.logger ?? console;
+  }
+
+  get isConnected(): boolean {
+    return this.connected;
+  }
+
+  async connect(): Promise<void> {
+    this.connected = true;
+    this.emit('login', {
+      accessToken: 'offline',
+      projectUID: this.projectUID,
+      latitude: this.location.latitude,
+      longitude: this.location.longitude,
+      timezone: 'UTC',
+      accessLevel: 0,
+    });
+    this.emit('connect');
+  }
+
+  async getPrograms(): Promise<ProgramGroup[]> {
+    return this.groups;
+  }
+
+  async execCommand(reference: ProgramReference): Promise<unknown> {
+    this.commands.push(reference);
+    this.logger.log('[ccs:offline] execCommand', reference);
+    return { success: true };
+  }
+
+  setProgramState(programID: string, value: number): void {
+    for (const group of this.groups) {
+      for (const program of group.programs) {
+        if (program._id === programID) program.state.value = value;
+      }
+    }
+    this.emit('stateChange', { programID, value });
+  }
+
+  close(): void {
+    if (!this.connected) return;
+    this.connected = false;
+    this.emit('disconnect', 'io client disconnect');
+  }
+}

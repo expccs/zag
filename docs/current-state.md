@@ -5,6 +5,69 @@ Handoff log between agent sessions. Newest entry on top. See the
 
 ---
 
+- **Timestamp:** 2026-11-02T10:40:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:**
+  - Analysed `~/tv-tower-back` and `~/artisight-htv-sys-new/kutaisi-public`
+    (server + both frontends); wrote `docs/backend/shared-modules.md`
+    (comparison, defects found, decisions, Socket.IO and TouchDesigner
+    protocols, env table) and `docs/backend/reference/*.ts` — unified
+    CloudClient/FakeCloudClient, AppState, GeoFence, TouchDesignerClient,
+    SessionQueue, config, Application, socket-api, bootstrap. `tsc --strict`
+    clean; `reference/selftest.js` passes (real socket.io + ws servers).
+  - `AGENTS.md`: rule to reuse `docs/backend/reference/` for the server.
+- **Next step:** Bootstrap the repo (Next.js app + `server/` process from
+  `reference/`), then screens per `docs/design/frames.md`.
+- **Blockers / open questions:** CCS credentials, `projectUID`, state
+  group and program ids for ZAG (Expolight); semantics of the `schedule`
+  flag; confirm `SESSION_MS` (40 s) and `SESSION_GAP_MS`; TouchDesigner
+  message names to agree with the TD operator.
+
+---
+
+- **Timestamp:** 2026-11-01T18:10:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:**
+  - `docs/design/` completed from verified Figma data: `design-system.md`
+    (colors, 4 palettes, backgrounds incl. blur/filters, full type ramp
+    with native sizes, Figma Glass vs liquid-glass card, buttons, lang
+    switch, timer ring/badge, mode card, per-screen layout), `tokens.json`,
+    `frames.md`, `screens/`, and `assets/` (logos, icons SVG, backgrounds,
+    color wheel, mode previews, mission photos; 78 MB, raw sources + 1x renders).
+  - Remote Figma MCP now works via the Pro-team copy
+    `w3H4qazUL5GxhIm3MXnKzP` (same node ids); `AGENTS.md` updated.
+    Figma file has no variables/styles; states are not designed.
+- **Next step:** Bootstrap the Next.js app: `next/font` for Unbounded +
+  Montserrat, CSS variables from `tokens.json`, `GlassCard`/`GlassPill`
+  primitives, then screens in the order of `docs/design/frames.md`.
+  Decide whether `assets/` raw sources (78 MB) move to `public/` or an
+  image CDN; consider git LFS.
+- **Blockers / open questions:** Button/selected states need designer
+  input (proposals in design-system.md §7). Desktop stub and maintenance
+  screen have no design.
+
+---
+
+
+
+- **Timestamp:** 2026-10-29T09:50:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:**
+  - Figma access works through the local Dev Mode MCP (`figma-desktop`,
+    `.mcp.json`); it serves the current selection and also answers
+    `get_metadata` for page `0:1`. Remote Figma MCP still lacks edit access.
+  - `AGENTS.md`: added mandatory-skill rules and the Figma MCP rule.
+  - Wrote `docs/estimate.md`: screen inventory from Figma (53 frames), three
+    interactives rated 3/3/4, work breakdown ≈300–450 h with assumptions and
+    open questions.
+- **Next step:** Get answers to the open questions in `docs/estimate.md`
+  §6 (TouchDesigner protocol, cloud state service, proximity method), then
+  bootstrap the Next.js app.
+- **Blockers / open questions:** Rates/currency not provided, estimate is
+  hours only. Branch `master` vs `main` still undecided.
+
+---
+
 - **Timestamp:** 2026-10-29T08:30:00Z
 - **Agent / model:** Claude Fable 5.1
 - **What changed:**
