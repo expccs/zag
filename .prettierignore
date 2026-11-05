@@ -1,0 +1,7 @@
+node_modules/
+dist/
+dev-dist/
+.turbo/
+package-lock.json
+docs/
+.agents/

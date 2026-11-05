@@ -1,0 +1,143 @@
+name: deploy
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: What to deploy
+        type: choice
+        required: true
+        default: all
+        options: [all, web, server]
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/zag-server
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      web: ${{ steps.affected.outputs.web }}
+      server: ${{ steps.affected.outputs.server }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - id: affected
+        env:
+          TARGET: ${{ inputs.target }}
+          TURBO_SCM_BASE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          emit() { echo "web=$1" >> "$GITHUB_OUTPUT"; echo "server=$2" >> "$GITHUB_OUTPUT"; echo "web=$1 server=$2"; }
+          case "${TARGET:-}" in
+            all)    emit true true;  exit 0 ;;
+            web)    emit true false; exit 0 ;;
+            server) emit false true; exit 0 ;;
+          esac
+          # force-push or first commit: before = 000…0 → deploy everything
+          if [[ -z "$TURBO_SCM_BASE" || "$TURBO_SCM_BASE" =~ ^0+$ ]] \
+             || ! git cat-file -e "$TURBO_SCM_BASE^{commit}" 2>/dev/null; then
+            emit true true; exit 0
+          fi
+          PKGS=$(npx turbo ls --affected --output=json | jq -r '.packages.items[].name')
+          echo "affected: $PKGS"
+          WEB=false; SERVER=false
+          grep -qx '@zag/web' <<<"$PKGS" && WEB=true
+          grep -qx '@zag/server' <<<"$PKGS" && SERVER=true
+          emit "$WEB" "$SERVER"
+
+  deploy-web:
+    needs: detect
+    if: needs.detect.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx turbo run build --filter=@zag/web
+        env:
+          VITE_SOCKET_URL: ${{ vars.VITE_SOCKET_URL }}
+          VITE_APP_VERSION: ${{ github.sha }}
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+      - name: Upload release and switch symlink
+        env:
+          HOST: ${{ vars.DEPLOY_HOST }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+          RELEASE="/srv/zag/releases/$SHA"
+          rsync -az --delete apps/web/dist/ "deploy@$HOST:$RELEASE/"
+          ssh "deploy@$HOST" "set -e
+            ln -sfn '$RELEASE' /srv/zag/ui.tmp && mv -Tf /srv/zag/ui.tmp /srv/zag/ui
+            ls -dt /srv/zag/releases/* | tail -n +6 | xargs -r rm -rf
+            readlink -f /srv/zag/ui"
+
+  deploy-server:
+    needs: detect
+    if: needs.detect.outputs.server == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/server/Dockerfile
+          push: true
+          build-args: APP_VERSION=${{ github.sha }}
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+      - name: Pull image and restart the server
+        env:
+          HOST: ${{ vars.DEPLOY_HOST }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+          ssh "deploy@$HOST" "set -e
+            cd /srv/zag
+            export SERVER_TAG='$SHA'
+            docker compose pull server
+            docker compose up -d server
+            for i in \$(seq 1 15); do
+              curl -fsS localhost:8080/health && exit 0
+              sleep 2
+            done
+            echo 'server did not become healthy'; docker compose logs --tail=50 server; exit 1"

@@ -25,8 +25,9 @@
   событий в `web` и `server` нельзя.
 - Шрифты Unbounded и Montserrat — self-hosted через
   `@fontsource-variable/unbounded` и `@fontsource-variable/montserrat`
-  **[проверить наличие cyrillic-сабсета]**; к Google Fonts в рантайме не
-  обращаемся (PWA должна открываться без внешних запросов).
+  (у обоих есть `cyrillic` и `cyrillic-ext`, проверено 2026-11-05 по
+  содержимому пакетов 5.3.0); к Google Fonts в рантайме не обращаемся
+  (PWA должна открываться без внешних запросов).
 
 ## 2. Структура
 
@@ -70,7 +71,7 @@ zag/
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
-  "globalDependencies": [".env", "tsconfig.base.json"],
+  "globalDependencies": [".env"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -89,6 +90,15 @@ zag/
 - `^build` гарантирует, что `@zag/protocol` собран до `web` и `server`.
 - `env` перечисляет переменные, влияющие на хэш кэша `web`: смена
   `VITE_SOCKET_URL` обязана инвалидировать сборку.
+- Базовый `tsconfig` лежит в `packages/config/tsconfig/base.json` (не в
+  корне): Vite резолвит `extends` через симлинк `node_modules/@zag/config`
+  без `realpath`, поэтому относительные пути наружу пакета не работают.
+- Корень требует `"packageManager": "npm@<version>"` — без него
+  `turbo` не находит workspace.
+- `@zag/protocol` собирается дважды: `dist/` (CJS, `require` для
+  `apps/server`) и `dist/esm/` (`import` для Vite). Vite не
+  pre-bundl'ит симлинк-пакеты воркспейса, поэтому CJS-сборка в dev даёт
+  «does not provide an export named …».
 - Корневые скрипты: `turbo run build`, `turbo run lint typecheck test`,
   `turbo run dev` (параллельно `vite` и `tsx watch`).
 - Удалённый кэш не обязателен; при желании — `turbo login && turbo link`
@@ -145,7 +155,8 @@ export default defineConfig({
 ## 5. `apps/server`: Docker-образ
 
 `Dockerfile` (multi-stage, через `turbo prune`, чтобы в образ попали
-только `server` и `protocol`):
+только `server` и `protocol`). Актуальная версия —
+`apps/server/Dockerfile`; схема:
 
 ```dockerfile
 FROM node:22-alpine AS pruner
@@ -381,8 +392,6 @@ npx turbo run dev               # vite :5173 с proxy /socket.io → :8080, serv
 
 ## 9. Открытые вопросы
 
-- `@fontsource-variable/unbounded`: проверить cyrillic-сабсет; иначе
-  положить woff2 в `apps/web/public/fonts` из Google Fonts.
 - Пакет `@zag/deploy` для `nginx.conf`/`compose` (§ 7).
 - Нужен ли staging (второй `environment` и хост) — по умолчанию нет.
 - Удалённый кэш Turborepo — по желанию, когда CI станет медленным.

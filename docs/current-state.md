@@ -5,6 +5,46 @@ Handoff log between agent sessions. Newest entry on top. See the
 
 ---
 
+- **Timestamp:** 2026-11-05T13:30:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:** stage 1 of [`roadmap.md`](roadmap.md) shipped
+  (uncommitted, on `master`):
+  - Monorepo: root `package.json` (npm workspaces, `packageManager`),
+    `turbo.json`, `packages/config` (eslint Metarhia + typescript-eslint +
+    react-hooks, tsconfig `base`/`node`/`react`), `packages/protocol`
+    (§ 4 event names + payload types, `isValidUserId`; dual build:
+    `dist/` CJS for the server via `require`, `dist/esm/` for Vite via
+    `import` — Vite serves linked workspace packages as source, so a
+    CJS-only build has no named exports in dev).
+  - `apps/server`: `bootstrap.ts` (http + Socket.IO websocket-only +
+    `/health` with live client count), `EAUTH` handshake check, JSON-lines
+    logger (`pretty` outside production), `socket connected` /
+    `socket disconnected` / `socket rejected` logs with socketId, userId,
+    transport, ip (X-Forwarded-For), UA, origin, duration; `node:test`
+    suite; multi-stage `Dockerfile` via `turbo prune`.
+  - `apps/web`: Vite 8 + React 19 + `vite-plugin-pwa`, fontsource fonts
+    (cyrillic confirmed), `SocketProvider` (`useSyncExternalStore` over
+    socket flags: idle / connecting / connected / offline, `userId` in
+    `localStorage`), stub screen on the Home layout (logo, hero, status
+    pill, footer logos, build sha), PWA icons from `zag-short.png`.
+  - CI/CD: `ci.yml` (`turbo --affected`), `deploy.yml` (detect →
+    rsync + symlink for web, GHCR + compose for server, `workflow_dispatch`
+    all/web/server), `deploy/docker-compose.yml`, `deploy/nginx/zag.conf`,
+    `deploy/README.md` (host bootstrap + GitHub vars/secrets).
+  - Verified: `turbo run lint typecheck test build` green; server smoke
+    test through the Vite proxy (connect / EAUTH / disconnect logged);
+    local `docker build` of the server image. **Not** verified: stub
+    screen in a real browser (Chrome extension was offline), workflows on
+    GitHub (nothing pushed yet).
+- **Next step:** commit + push to trigger `ci.yml`; set up the host and
+  `production` environment per `deploy/README.md`, then run `deploy →
+  all`. Then stage 2: move `docs/backend/reference/*.ts` into
+  `apps/server/src` and wire the full § 4 API.
+- **Blockers / open questions:** `deploy/` as `@zag/deploy` package
+  (monorepo.md § 7) still undecided — currently a plain folder, nginx /
+  compose changes are applied by hand. Remote `master` still holds the
+  pre-filter-repo history (force-push pending from the previous entry).
+
 - **Timestamp:** 2026-11-05T12:00:00Z
 - **Agent / model:** Claude Fable 5.1
 - **What changed:**

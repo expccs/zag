@@ -1,23 +1,35 @@
 {
   "name": "zag",
-  "version": "1.0.0",
-  "description": "",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ZAG «Створюй світлом» — interactive facade PWA and Socket.IO server",
   "homepage": "https://github.com/expccs/zag#readme",
-  "bugs": {
-    "url": "https://github.com/expccs/zag/issues"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/expccs/zag.git"
   },
-  "license": "ISC",
-  "author": "",
-  "type": "commonjs",
-  "main": "index.js",
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "check": "turbo run lint typecheck test build",
+    "fix": "turbo run fix",
+    "postinstall": "metaskills antigravity"
   },
   "devDependencies": {
-    "metaskills": "^1.0.5"
-  }
+    "metaskills": "^1.0.5",
+    "turbo": "^2.11.10"
+  },
+  "packageManager": "npm@11.19.1"
 }

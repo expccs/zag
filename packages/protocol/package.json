@@ -1,0 +1,30 @@
+{
+  "name": "@zag/protocol",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Socket.IO event names and payload types shared by @zag/web and @zag/server",
+  "type": "commonjs",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json && node scripts/esm-package.cjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint . && prettier --check .",
+    "fix": "eslint . --fix && prettier --write ."
+  },
+  "devDependencies": {
+    "@zag/config": "*",
+    "typescript": "^5.9.3"
+  },
+  "module": "./dist/esm/index.js"
+}

@@ -135,7 +135,7 @@ stops: 0.04 #000 100% · 0.10 #070707 94% · 0.16 #0E0E0E 88% ·
 
 ```ts
 // src/main.tsx
-import '@fontsource-variable/unbounded';   // 200–900, [проверить] cyrillic
+import '@fontsource-variable/unbounded';   // 200–900, latin + cyrillic
 import '@fontsource-variable/montserrat';  // 100–900, latin + cyrillic
 ```
 
@@ -146,8 +146,8 @@ import '@fontsource-variable/montserrat';  // 100–900, latin + cyrillic
 }
 ```
 
-Если у `@fontsource-variable/unbounded` нет кириллицы — положить woff2 из
-Google Fonts в `apps/web/public/fonts/` и объявить `@font-face` вручную.
+Кириллица у обоих пакетов есть (`cyrillic`, `cyrillic-ext` в 5.3.0),
+Vite кладёт только нужные сабсеты в `assets/` и precache PWA.
 
 ## 5. Эффект Glass и компонент «liquid glass»
 
