@@ -4,14 +4,17 @@ Skills live under [`.agents/skills/`](.agents/skills/). Read the relevant
 `SKILL.md` **before** writing, reviewing, or refactoring code in its area;
 do not rely on training-data defaults.
 
-## Any application code (Next.js / React)
+## Any application code (React)
 
 Always apply
-[`vercel-react-best-practices`](.agents/skills/vercel-react-best-practices/SKILL.md).
-It is the Next.js skill for this project: 40+ performance rules under
-`rules/`, prioritized by impact (waterfalls and bundle size are critical,
-then server-side caching, re-render hygiene, micro-optimizations). The
-consolidated document is `AGENTS.md` inside that skill folder.
+[`vercel-react-best-practices`](.agents/skills/vercel-react-best-practices/SKILL.md):
+40+ performance rules under `rules/`, prioritized by impact (waterfalls
+and bundle size are critical, then re-render hygiene, micro-optimizations).
+The consolidated document is `AGENTS.md` inside that skill folder. The
+project has **no Next.js**, so skip the rules that only exist for it:
+`server-*`, `async-api-routes`, `rendering-hydration-*`, and anything
+built on `next/dynamic` or `next/image` (use `React.lazy` and plain
+`<img>`/`<picture>` instead).
 
 ## API code (route handlers, server actions, services, data layer)
 
@@ -78,19 +81,26 @@ Project design files:
   ids) for remote MCP calls.
 - "ZAG Інтерактив на фасаді 2025" — `8EJBwH8nOkFYKZPRI7Su1z`
 
-# UI delivery — static export, no SSR
+# Stack and delivery — monorepo, React PWA, no SSR
 
-Next.js is a **build tool only** in this project. No browser request for
-the UI is ever handled by Next: at server start `next build` with
-`output: 'export'` writes static files to a host directory, host nginx serves and caches them,
-and the only runtime process is `server/` (Socket.IO + `/health`).
-`next start`, standalone output, route handlers (`app/api`), server
-actions, `middleware.ts`, `getServerSideProps`, `force-dynamic`,
-`cookies()`/`headers()` and `next/image` optimization are forbidden; all
-data reaches the browser through Socket.IO at runtime. The `server-*`
-rules of `vercel-react-best-practices` therefore do not apply. Full
-spec, `next.config`, compose and nginx snippets:
-[`docs/backend/shared-modules.md` § 6.1](docs/backend/shared-modules.md).
+[`docs/monorepo.md`](docs/monorepo.md) is the source of truth for the
+repository layout, build and deployment. Summary:
+
+- Turborepo + npm workspaces: `apps/web` (React 19 + Vite +
+  `vite-plugin-pwa`), `apps/server` (Socket.IO, code from
+  `docs/backend/reference/`), `packages/protocol` (shared event types),
+  `packages/config` (eslint/prettier/tsconfig presets).
+- **No Next.js and no SSR.** The UI is static files built in CI and
+  served by nginx installed on the host (`root /srv/zag/ui`). The only
+  runtime process is `apps/server`, run via `docker compose` on the host
+  and published on loopback only. All data reaches the browser through
+  Socket.IO after the page loads.
+- CI/CD (GitHub Actions, branch `master`) uses `turbo --affected` /
+  `turbo ls --affected` to run checks and deploy **only the packages
+  that changed** (and their dependents). Do not add `paths:` filters or
+  per-app workflows; extend the `detect` job in `deploy.yml` instead.
+- Shared Socket.IO types live only in `packages/protocol`; never
+  duplicate them in `web` or `server`.
 
 # Backend modules — reuse, do not reinvent
 

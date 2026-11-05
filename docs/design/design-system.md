@@ -130,13 +130,24 @@ stops: 0.04 #000 100% · 0.10 #070707 94% · 0.16 #0E0E0E 88% ·
 | `type.badge` | Montserrat Medium | 16 | 16 | «Таймер: 00:31» |
 | `type.lang` | Montserrat Regular | 11.5 | 14 | «UA» / «ENG» |
 
-Подключение в Next.js:
+Подключение в `apps/web` (self-hosted, без запросов к Google Fonts —
+см. `docs/monorepo.md` § 1):
 
 ```ts
-import { Unbounded, Montserrat } from 'next/font/google';
-export const unbounded = Unbounded({ subsets: ['latin', 'cyrillic'], weight: ['300', '400', '500', '600', '700', '800'], variable: '--font-unbounded' });
-export const montserrat = Montserrat({ subsets: ['latin', 'cyrillic'], weight: ['400', '500', '600', '700'], variable: '--font-montserrat' });
+// src/main.tsx
+import '@fontsource-variable/unbounded';   // 200–900, [проверить] cyrillic
+import '@fontsource-variable/montserrat';  // 100–900, latin + cyrillic
 ```
+
+```css
+:root {
+  --font-unbounded: 'Unbounded Variable', sans-serif;
+  --font-montserrat: 'Montserrat Variable', sans-serif;
+}
+```
+
+Если у `@fontsource-variable/unbounded` нет кириллицы — положить woff2 из
+Google Fonts в `apps/web/public/fonts/` и объявить `@font-face` вручную.
 
 ## 5. Эффект Glass и компонент «liquid glass»
 

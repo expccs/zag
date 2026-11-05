@@ -5,6 +5,46 @@ Handoff log between agent sessions. Newest entry on top. See the
 
 ---
 
+- **Timestamp:** 2026-11-05T12:00:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:**
+  - `docs/estimate.md` and `docs/estimate.xlsx` purged from the whole
+    local git history with `git filter-repo` (all commit SHAs after
+    `228c602` changed; `origin` remote re-added). Pre-rewrite backup
+    bundle is in the session scratchpad, not in the repo.
+  - Uncommitted work (AGENTS.md, shared-modules.md, design-system.md,
+    this file, new `docs/monorepo.md`) carried over untouched.
+- **Next step:** force-push the rewritten `master` to `origin`
+  (`git push --force-with-lease origin master`), then have every other
+  clone re-clone; ask GitHub support to purge cached old commits if the
+  files were sensitive.
+- **Blockers / open questions:** force-push to shared `master` not done
+  yet — needs the owner's go-ahead.
+
+- **Timestamp:** 2026-11-05T00:00:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:**
+  - Decision: **no Next.js at all.** New `docs/monorepo.md`: Turborepo +
+    npm workspaces (`apps/web` React 19 + Vite + `vite-plugin-pwa`,
+    `apps/server` Socket.IO, `packages/protocol`, `packages/config`),
+    `turbo.json`, PWA/Workbox config, server Dockerfile via `turbo prune`,
+    host layout (nginx on host, `/srv/zag/releases/<sha>` + symlink,
+    `server` in compose on loopback), GitHub Actions `ci.yml`/`deploy.yml`
+    with `turbo --affected` so only changed packages are checked/deployed.
+  - `shared-modules.md` § 6/6.1/8, `AGENTS.md` (skills + stack sections),
+    `design-system.md` fonts (fontsource instead of `next/font`),
+    `estimate.md` updated to the new stack.
+- **Next step:** Bootstrap the monorepo per `docs/monorepo.md` § 2–3:
+  root `package.json` workspaces, `turbo.json`, `packages/config`,
+  `packages/protocol` (types from `reference/socket-api.ts`),
+  `apps/server` from `reference/`, `apps/web` Vite skeleton; then the two
+  workflows.
+- **Blockers / open questions:** `@fontsource-variable/unbounded`
+  cyrillic subset; whether `deploy/` becomes a `@zag/deploy` package
+  (`monorepo.md` § 7); unchanged CCS/TD questions from 2026-11-02.
+
+---
+
 - **Timestamp:** 2026-11-04T00:30:00Z
 - **Agent / model:** Claude Fable 5.1
 - **What changed:**
