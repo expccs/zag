@@ -240,6 +240,106 @@ CCS ──socket.io──▶ CloudClient ──stateChange──▶ AppState ─
   свайп по `|Δx| > 0.1` — можно взять `TouchArea.jsx` из Кутаиси как
   основу, заменив styled-components на CSS-модули по дизайн-системе.
 
+### 6.1 Раздача UI: только статика, без SSR
+
+Требование к продакшену: **ни один запрос браузера за UI не должен
+обрабатываться Next.js**. Процесс Next в рантайме не существует —
+`next start`, `next dev` и standalone-сервер в продакшене запрещены.
+UI собирается в статические файлы один раз при старте сервера, их
+раздаёт nginx. Единственное, что живёт в рантайме, — `server/`
+(`bootstrap.ts`: Socket.IO + `/health`).
+
+Как это обеспечивается:
+
+1. **`next.config`** — статический экспорт:
+   ```ts
+   const nextConfig = {
+     output: 'export',          // next build → ./out, никакого сервера
+     trailingSlash: true,       // /modes/ → out/modes/index.html, nginx отдаёт как каталог
+     images: { unoptimized: true }, // /_next/image недоступен без сервера
+   };
+   ```
+   Сборка с `output: 'export'` падает при любой серверной фиче — это и
+   есть защита от случайного SSR. Запрещено: `getServerSideProps`,
+   `dynamic = 'force-dynamic'`, `cookies()` / `headers()` /
+   `searchParams` в серверных компонентах, `app/api/**` (route handlers),
+   `'use server'` (server actions), `middleware.ts`, `revalidate*`,
+   `next/image` без `unoptimized`, `redirects`/`rewrites`/`headers` в
+   конфиге (они выполняются только сервером Next — переносятся в nginx).
+2. **Все данные — в браузере, в рантайме.** Флаги состояния, очередь,
+   геозона, язык приходят через Socket.IO (§ 4) после загрузки страницы;
+   ничего не запрашивается ни на сборке, ни на запросе. Серверные
+   компоненты допустимы только как статическая разметка (без `async`,
+   без fetch); всё интерактивное — `'use client'`. Экраны UA/EN — два
+   статических маршрута через `generateStaticParams` (`/ua/…`, `/en/…`)
+   или переключение на клиенте; не через `Accept-Language` на сервере.
+3. **Переменные окружения** для UI только `NEXT_PUBLIC_*` (адрес
+   сокета `NEXT_PUBLIC_SOCKET_URL`, он же origin сайта, т.к. `/socket.io/`
+   проксируется nginx с того же домена). Они вшиваются в бандл на
+   сборке — поэтому сборка делается при старте сервера с актуальным
+   `.env`, а не один раз в образе.
+4. **Сборка при старте.** nginx стоит на хосте (не в Docker), поэтому
+   результат сборки должен лежать в каталоге хоста. В `docker-compose`
+   два сервиса: одноразовый `ui-build` (`node`-образ) и `server`.
+   `ui-build` bind-монтирует каталог хоста `/srv/zag/ui` в `/app/out`,
+   очищает его, делает `next build` и завершается; `server` стартует
+   после него. Node на хосте не нужен.
+   ```yaml
+   services:
+     ui-build:
+       build: { context: ., dockerfile: ui.Dockerfile }
+       command: sh -c "rm -rf /app/out/* && npx next build"
+       env_file: .env            # NEXT_PUBLIC_* вшиваются здесь
+       volumes:
+         - /srv/zag/ui:/app/out  # bind-mount, тот же путь — root в nginx
+       restart: "no"
+     server:
+       build: ./server
+       env_file: .env
+       ports: ["127.0.0.1:8080:8080"]   # только для nginx на хосте
+       depends_on:
+         ui-build: { condition: service_completed_successfully }
+       restart: unless-stopped
+   ```
+   Каталог `/srv/zag/ui` создаётся один раз при настройке сервера
+   (`mkdir -p /srv/zag/ui`); nginx-пользователь должен иметь на него
+   право чтения — файлы из контейнера создаются от root с режимом
+   `644`/`755`, этого достаточно. Очистка `rm -rf /app/out/*` обязательна:
+   `next build` не удаляет старые хэшированные чанки. Пересборка UI =
+   `docker compose up ui-build`; `server` и nginx не трогаются, новая
+   сборка подхватывается следующим запросом (HTML отдаётся с `no-cache`).
+5. **nginx на хосте** раздаёт `/srv/zag/ui` с диска и кэширует
+   (`/etc/nginx/sites-available/zag`, внутри `server { … }`):
+   ```nginx
+   root /srv/zag/ui;
+   open_file_cache max=1000 inactive=60s;
+   gzip on; gzip_types text/html text/css application/javascript image/svg+xml application/json;
+
+   # хэшированные ассеты — навсегда
+   location /_next/static/ { add_header Cache-Control "public, max-age=31536000, immutable"; }
+   # HTML — всегда перепроверять, чтобы новая сборка подхватывалась сразу
+   location / {
+     add_header Cache-Control "no-cache";
+     try_files $uri $uri/ $uri.html /404.html;
+   }
+   # единственное, что проксируется, — сокет и health сервера
+   location /socket.io/ {
+     proxy_pass http://127.0.0.1:8080;   # порт server, опубликованный только на loopback
+     proxy_http_version 1.1;
+     proxy_set_header Upgrade $http_upgrade;
+     proxy_set_header Connection "upgrade";
+     proxy_read_timeout 3600s;
+   }
+   location = /health { proxy_pass http://127.0.0.1:8080; }
+   ```
+   `ALLOWED_ORIGINS` сервера = origin сайта (один домен).
+6. **Проверка в CI / перед релизом:** `next build` проходит с
+   `output: 'export'`; в репозитории нет `app/api`, `middleware.ts`,
+   `'use server'`, `getServerSideProps`, `force-dynamic`; в
+   `docker-compose` нет сервиса с `next start`. Из правил
+   `vercel-react-best-practices` раздел `server-*` (RSC data fetching,
+   server actions, `after()`) к проекту не применяется — сервера Next нет.
+
 ---
 
 ## 7. Переменные окружения
@@ -274,8 +374,9 @@ CCS ──socket.io──▶ CloudClient ──stateChange──▶ AppState ─
 ## 8. Как использовать
 
 1. При бутстрапе Next.js положить `reference/*.ts` в серверный пакет
-   (например `server/src/`), `bootstrap.ts` — точка входа отдельного
-   процесса рядом с Next (socket.io не живёт внутри Next route handlers).
+   (например `server/src/`), `bootstrap.ts` — точка входа единственного
+   рантайм-процесса. Next в рантайме не запускается: UI собирается в
+   статику (`output: 'export'`) и раздаётся nginx — см. § 6.1.
 2. `npm i socket.io socket.io-client ws` и `npm i -D @types/ws`.
 3. `tsconfig`: `target ES2022`, `module commonjs` или `nodenext`, `strict`.
 4. Для Metarhia-стиля (см. `.agents/skills/metaskills/js-conventions`)

@@ -5,6 +5,24 @@ Handoff log between agent sessions. Newest entry on top. See the
 
 ---
 
+- **Timestamp:** 2026-11-04T00:30:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:**
+  - Documented the "no SSR" requirement: `docs/backend/shared-modules.md`
+    § 6.1 (static export via `output: 'export'`, forbidden Next server
+    features, build-at-start `ui-build` compose service writing to a
+    host bind-mount `/srv/zag/ui`, host nginx `root`/cache/proxy config
+    with `server` published on loopback only, CI checks); § 8 step 1
+    updated; `AGENTS.md` got a "UI delivery — static export, no SSR" rule.
+    Decision: nginx runs on the host, not in Docker.
+- **Next step:** Bootstrap the repo per § 6.1 and § 8: Next.js app with
+  `output: 'export'`, `server/` from `reference/`, `docker-compose` with
+  `ui-build` + `nginx` + `server`.
+- **Blockers / open questions:** unchanged from 2026-11-02 entry (CCS
+  credentials, program ids, `SESSION_MS`, TD message names).
+
+---
+
 - **Timestamp:** 2026-11-02T10:40:00Z
 - **Agent / model:** Claude Fable 5.1
 - **What changed:**

@@ -78,6 +78,20 @@ Project design files:
   ids) for remote MCP calls.
 - "ZAG Інтерактив на фасаді 2025" — `8EJBwH8nOkFYKZPRI7Su1z`
 
+# UI delivery — static export, no SSR
+
+Next.js is a **build tool only** in this project. No browser request for
+the UI is ever handled by Next: at server start `next build` with
+`output: 'export'` writes static files to a host directory, host nginx serves and caches them,
+and the only runtime process is `server/` (Socket.IO + `/health`).
+`next start`, standalone output, route handlers (`app/api`), server
+actions, `middleware.ts`, `getServerSideProps`, `force-dynamic`,
+`cookies()`/`headers()` and `next/image` optimization are forbidden; all
+data reaches the browser through Socket.IO at runtime. The `server-*`
+rules of `vercel-react-best-practices` therefore do not apply. Full
+spec, `next.config`, compose and nginx snippets:
+[`docs/backend/shared-modules.md` § 6.1](docs/backend/shared-modules.md).
+
 # Backend modules — reuse, do not reinvent
 
 [`docs/backend/shared-modules.md`](docs/backend/shared-modules.md) is the
