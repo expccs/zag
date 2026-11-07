@@ -5,6 +5,33 @@ Handoff log between agent sessions. Newest entry on top. See the
 
 ---
 
+- **Timestamp:** 2026-11-07T16:30:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:** stage 3 started in `apps/web` (uncommitted, on `master`):
+  - `src/i18n/`: `LanguageProvider` + `useLanguage()` (`uk` | `en`, stored
+    in `localStorage` `zag:lang:v1`, default by `navigator.language`, sets
+    `<html lang>`), typed dictionary `messages.ts` (Home, Mission body as
+    paragraph/list blocks with bold runs). UA Mission text is my
+    translation of the ENG frame `38:3029` — Figma has no UA frame.
+  - `react-router` 8 (declarative `BrowserRouter`): `/` = `HomeScreen`
+    (title, one button → `/mission`, lang pill), `/mission` =
+    `MissionScreen` (lazy chunk; back arrow, lang pill, hero photo with
+    title, text, 3 photos, «Touch & Create» → `/`, footer), `*` → `/`.
+    `StubScreen` with the socket status is removed; `SocketProvider`
+    stays mounted without `autoConnect`.
+  - Components `ZagHeader`, `BrandFooter`, `LangSwitch` (toggle UA/ENG),
+    `GlassLink` (`home` / `mission` variants), `BackLink`. Photos resized
+    to 1000 px into `public/mission/`, `public/bg-interactive.jpg`.
+    Checked with headless Chrome screenshots against the Figma render.
+- **Next step:** connect `state:update` screens (`maintenance` /
+  `disabled` / `schedule`, «Зв'язок втрачено») behind an interactive
+  route, then the interactive flow of stage 4.
+- **Blockers / open questions:** official UA text for Mission and the
+  Home EN title («Create with light» assumed, frame `11:4392` not read);
+  where «Touch & Create» should lead before stage 4 (now `/`).
+
+---
+
 - **Timestamp:** 2026-11-07T15:00:00Z
 - **Agent / model:** Claude Fable 5.1
 - **What changed:** CCS ids are project constants (uncommitted, on `master`):

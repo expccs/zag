@@ -1,0 +1,21 @@
+.link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -13px 0 0 -8px;
+  color: var(--color-text);
+  border-radius: 22px;
+}
+
+.link:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.6);
+}
+
+.arrow {
+  width: 28px;
+  height: 18px;
+  transform: scaleX(-1);
+  filter: drop-shadow(0 3px 3px var(--color-shadow));
+}

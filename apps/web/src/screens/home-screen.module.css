@@ -1,0 +1,52 @@
+/* Layout follows Home 8:3824 on the 393 × 852 grid (design-system.md § 1, § 8). */
+.screen {
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  justify-content: center;
+  background: var(--color-black) url('/bg-home.jpg') center / cover no-repeat;
+}
+
+.column {
+  position: relative;
+  width: min(100%, var(--screen-width));
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: 0 var(--space-6);
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.lang {
+  position: absolute;
+  top: calc(102px + env(safe-area-inset-top));
+  right: 23px;
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 48px;
+  text-align: center;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-unbounded);
+  font-weight: 800;
+  font-size: 32px;
+  line-height: normal;
+  text-shadow: 0 3.5px 3.5px var(--color-shadow);
+}
+
+.version {
+  position: absolute;
+  right: var(--space-6);
+  bottom: 6px;
+  margin: 0;
+  font-size: 11.5px;
+  opacity: 0.5;
+}

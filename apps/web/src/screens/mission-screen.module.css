@@ -1,0 +1,120 @@
+/* Mission & Philosophy 38:3029, 395 × 2307 (design-system.md § 8). */
+.screen {
+  display: flex;
+  justify-content: center;
+  min-height: 100dvh;
+  background: var(--color-black);
+}
+
+.column {
+  width: min(100%, var(--screen-width));
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Warm blurred background of the interactive screens behind header + text. */
+.top {
+  background: url('/bg-interactive.jpg') center top / cover no-repeat;
+}
+
+.nav {
+  position: relative;
+  height: 77px;
+  padding: 7px 23px 0 19px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.nav > :first-child {
+  position: absolute;
+  left: 19px;
+  top: 24px;
+}
+
+.hero {
+  position: relative;
+  height: 294px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 40px;
+}
+
+.heroPhoto {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.title {
+  position: relative;
+  margin: 0;
+  font-family: var(--font-unbounded);
+  font-weight: 700;
+  font-size: 33px;
+  line-height: normal;
+  text-align: center;
+  white-space: pre-line;
+  text-shadow: 0 3.5px 3.5px var(--color-shadow);
+}
+
+.body {
+  padding: 37px 29px 100px;
+  font-family: var(--font-montserrat);
+  font-weight: 400;
+  font-size: 14.8px;
+  line-height: normal;
+}
+
+.body:lang(uk) {
+  font-size: 14px;
+}
+
+.body b {
+  font-weight: 700;
+}
+
+.paragraph {
+  margin: 0;
+}
+
+.list {
+  margin: 0;
+  padding-left: 22px;
+  list-style: disc;
+}
+
+.list li::marker {
+  font-size: 0.6em;
+}
+
+.photos {
+  display: flex;
+  flex-direction: column;
+}
+
+.photo {
+  display: block;
+  width: 100%;
+  object-fit: cover;
+}
+
+.photo:nth-child(1) {
+  height: 316px;
+}
+
+.photo:nth-child(2) {
+  height: 253px;
+}
+
+.photo:nth-child(3) {
+  height: 194px;
+}
+
+.cta {
+  display: flex;
+  justify-content: center;
+  padding: 36px var(--space-6) 40px;
+}

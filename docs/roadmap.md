@@ -9,7 +9,7 @@
 |---|---|---|---|
 | 1 | **Каркас + CI/CD** | Монорепо (Turborepo, npm workspaces), `@zag/config`, `@zag/protocol`; `apps/server` — Socket.IO + `/health`, лог открытия/закрытия клиентского соединения; `apps/web` — экран-заглушка и `SocketProvider`; `ci.yml`, `deploy.yml`, Dockerfile, `deploy/` (compose, nginx) | в работе |
 | 2 | **Домен сервера** | Перенос `docs/backend/reference/*.ts` в `apps/server/src`: CCS-клиент, флаги состояния, геозона, очередь, TouchDesigner, полный Socket.IO API § 4; `selftest.js` → тесты; структурный логгер в Docker | в работе: `cloud-client.ts`, `app-state.ts` + `state:update`/`state:get`; дальше геозона, очередь, TD |
-| 3 | **Оболочка приложения** | Роутинг, UA/EN, шрифты, токены, компоненты glass, Home, Mission, экраны по `state:update` (`maintenance` / `disabled` / `schedule`), «Зв'язок втрачено» | — |
+| 3 | **Оболочка приложения** | Роутинг, UA/EN, шрифты, токены, компоненты glass, Home, Mission, экраны по `state:update` (`maintenance` / `disabled` / `schedule`), «Зв'язок втрачено» | в работе: роутинг (`react-router`), `LanguageProvider` UA/EN, компоненты glass, Home, Mission; дальше экраны по `state:update` |
 | 4 | **Интерактив** | Режимы, инструкция, настройки (цвет / ширина / палитра), очередь-таймер, «поверніть телефон», отсчёт, рисование (`touch:event`), финал | — |
 | 5 | **Запуск** | Геозона на клиенте, PWA-иконки и обновление, анти-абьюз, настройка хоста, живые CCS и TouchDesigner, staging при необходимости | — |
 
