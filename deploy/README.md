@@ -7,15 +7,18 @@
 `ci.yml` (PR-проверки) остаётся на раннерах GitHub.
 
 ```bash
-# пользователь, от которого работает runner, и каталоги
-sudo useradd -m -s /bin/bash deploy
-sudo usermod -aG docker deploy
-sudo mkdir -p /srv/zag/releases && sudo chown -R deploy:deploy /srv/zag
+# runner уже установлен и работает от пользователя expo (/home/expo/actions-runner).
+# Ему нужны: группа docker и право писать в /srv/zag.
+sudo usermod -aG docker expo
+sudo mkdir -p /srv/zag/releases && sudo chown -R expo:expo /srv/zag
 # /srv/zag/ui НЕ создавать: CI сам ставит симлинк на /srv/zag/releases/<sha>
 sudo apt-get install -y git rsync curl jq            # + docker engine с compose v2
+# новая группа применяется только после перезапуска сервиса раннера
+sudo systemctl restart 'actions.runner.*'
+sudo -u expo docker ps                                # должно работать без sudo
 
 # env сервера (CCS, TD — docs/backend/shared-modules.md § 7); в git не попадает
-sudo -u deploy nano /srv/zag/.env          # PORT=8080, ALLOWED_ORIGINS=https://<domain>, CCS_*
+sudo -u expo nano /srv/zag/.env          # PORT=8080, ALLOWED_ORIGINS=https://<domain>, CCS_*
 
 # nginx на хосте
 sudo cp nginx/zag.conf /etc/nginx/sites-available/zag
@@ -25,19 +28,11 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ## Runner
 
-GitHub → repo → Settings → Actions → Runners → New self-hosted runner →
-Linux x64. Выполнить показанные там команды **от пользователя `deploy`**
-(workflow выбирает `runs-on: self-hosted`, дополнительных меток не нужно):
-
-```bash
-sudo -iu deploy
-mkdir actions-runner && cd actions-runner
-# curl + tar из инструкции GitHub
-./config.sh --url https://github.com/expccs/zag --token <TOKEN> --unattended
-exit
-sudo /home/deploy/actions-runner/svc.sh install deploy   # systemd-сервис
-sudo /home/deploy/actions-runner/svc.sh start
-```
+Уже установлен: GitHub → repo → Settings → Actions → Runners → `expo`
+(`runs-on: self-hosted`, дополнительных меток не нужно). Если ставить
+заново: New self-hosted runner → Linux x64, команды выполнять от
+пользователя, который будет деплоить, затем
+`sudo ./svc.sh install <user> && sudo ./svc.sh start`.
 
 Runner должен видеть `docker` (группа `docker`), писать в `/srv/zag` и
 дёргать `localhost:8080/health`. Node ставит `actions/setup-node`
@@ -60,5 +55,5 @@ Runner должен видеть `docker` (группа `docker`), писать 
 Откат UI: `ln -sfn /srv/zag/releases/<sha> /srv/zag/ui.tmp && mv -Tf
 /srv/zag/ui.tmp /srv/zag/ui`. Откат сервера: `SERVER_TAG=<sha> docker
 compose -f deploy/docker-compose.yml up -d server` из чекаута раннера
-(`/home/deploy/actions-runner/_work/zag/zag`), пока образ не вычищен
+(`/home/expo/actions-runner/_work/zag/zag`), пока образ не вычищен
 (хранится только текущий и `latest`).

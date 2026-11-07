@@ -5,7 +5,7 @@ Handoff log between agent sessions. Newest entry on top. See the
 
 ---
 
-- **Timestamp:** 2026-11-07T07:10:00Z
+- **Timestamp:** 2026-11-07T10:45:00Z
 - **Agent / model:** Claude Fable 5.1
 - **What changed:** deploy moved to a **self-hosted runner on the ZAG
   host** (uncommitted, on `master`; commit `90919d5` before it still had
@@ -24,12 +24,15 @@ Handoff log between agent sessions. Newest entry on top. See the
     runner install as user `deploy`; `docs/monorepo.md`
     § 5–7 synced. `deploy/nginx/zag.conf`: `open_file_cache` dropped (stale
     fds after symlink switch).
-  - Verified: YAML parses, web release step simulated locally (real-dir
-    case, prune, perms). **Not** verified: a run on the real runner,
-    `nginx -t`, docker steps (no Docker locally).
-- **Next step:** install the self-hosted runner per `deploy/README.md`
-  (user `deploy`, `/srv/zag/.env`, new `zag.conf` + `nginx -t`),
-  commit + push, then `Actions → deploy → Run workflow → all`.
+  - First run on the real runner (`expo`, user `expo`, commit `0b9ba2c`):
+    workflow logic reached the host steps; both failed on host permissions
+    — web: `mkdir: Permission denied` on `/srv/zag/releases`; server:
+    `permission denied … /var/run/docker.sock`. `deploy/README.md` now
+    targets user `expo` with the exact fix commands.
+- **Next step:** on the host run the block from `deploy/README.md`
+  (`usermod -aG docker expo`, `chown -R expo:expo /srv/zag`, restart the
+  runner service, `/srv/zag/.env`, new `zag.conf` + `nginx -t`), then
+  `Actions → deploy → Run workflow → all`.
 - **Blockers / open questions:** if the repo is public, confirm the
   self-hosted runner is only used by `deploy.yml` (push to `master` /
   manual), never by PR workflows.
