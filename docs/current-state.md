@@ -5,6 +5,28 @@ Handoff log between agent sessions. Newest entry on top. See the
 
 ---
 
+- **Timestamp:** 2026-11-07T06:00:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:** hardened the UI deploy into `/srv/zag/ui`
+  (uncommitted, on `master`):
+  - `deploy.yml` `deploy-web`: `mkdir -p` the release dir before rsync,
+    `--chmod=D755,F644`, host script via `bash -s` heredoc; a pre-existing
+    real `/srv/zag/ui` directory is moved to `releases/manual-<ts>` so the
+    symlink switch (`mv -T`) cannot fail; asserts `index.html` before
+    switching; prune keeps current + 4 and never touches the current one.
+    Host script simulated locally (real-dir, switch+prune, missing index).
+  - `deploy/nginx/zag.conf`: dropped `open_file_cache` (pinned fds of the
+    old release for 60 s after a switch → new index.html + 404 assets);
+    `server_name my.zag.com.ua` kept from the user's local edit.
+    `docs/monorepo.md` § 6–7 and `deploy/README.md` synced.
+  - **Not** verified: `nginx -t` (no nginx/Docker locally), workflow run
+    on GitHub.
+- **Next step:** commit + push; copy the new `zag.conf` to the host,
+  `nginx -t && systemctl reload nginx`; run `deploy → all` and check the
+  step log prints `/srv/zag/ui -> /srv/zag/releases/<sha>`.
+
+---
+
 - **Timestamp:** 2026-11-05T13:30:00Z
 - **Agent / model:** Claude Fable 5.1
 - **What changed:** stage 1 of [`roadmap.md`](roadmap.md) shipped

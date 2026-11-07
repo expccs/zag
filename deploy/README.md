@@ -8,6 +8,7 @@ CI их не раскатывает.
 sudo useradd -m -s /bin/bash deploy
 sudo usermod -aG docker deploy
 sudo mkdir -p /srv/zag/releases && sudo chown -R deploy:deploy /srv/zag
+# /srv/zag/ui НЕ создавать: CI сам ставит симлинк на /srv/zag/releases/<sha>
 
 # compose + env сервера (CCS, TD — docs/backend/shared-modules.md § 7)
 sudo -u deploy cp docker-compose.yml /srv/zag/

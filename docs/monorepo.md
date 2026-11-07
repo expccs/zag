@@ -203,8 +203,8 @@ services:
 `/etc/nginx/sites-available/zag` (внутри `server { … }`):
 
 ```nginx
-root /srv/zag/ui;                     # симлинк на /srv/zag/releases/<sha>
-open_file_cache max=1000 inactive=60s;
+root /srv/zag/ui;                     # симлинк на /srv/zag/releases/<sha>, ставит CI
+# без open_file_cache: он держит fd старого релиза до 60 с после переключения симлинка
 gzip on;
 gzip_types text/html text/css application/javascript image/svg+xml application/json application/manifest+json;
 
@@ -320,9 +320,12 @@ jobs:
         with: { ssh-private-key: "${{ secrets.DEPLOY_SSH_KEY }}" }
       - run: |
           H="${{ vars.DEPLOY_HOST }}"; R="/srv/zag/releases/${{ github.sha }}"
-          rsync -az --delete apps/web/dist/ "deploy@$H:$R/"
+          ssh "deploy@$H" "mkdir -p $R"
+          rsync -az --delete --chmod=D755,F644 apps/web/dist/ "deploy@$H:$R/"
+          # /srv/zag/ui — симлинк; если на хосте лежит обычный каталог, он
+          # сначала убирается в releases/manual-<ts>
           ssh "deploy@$H" "ln -sfn $R /srv/zag/ui.tmp && mv -Tf /srv/zag/ui.tmp /srv/zag/ui \
-            && ls -dt /srv/zag/releases/* | tail -n +6 | xargs -r rm -rf"
+            && ls -dt /srv/zag/releases/* | grep -vx $R | tail -n +5 | xargs -r rm -rf"
 
   deploy-server:
     needs: detect

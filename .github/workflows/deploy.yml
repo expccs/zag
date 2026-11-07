@@ -79,19 +79,33 @@ jobs:
       - uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
-      - name: Upload release and switch symlink
+      - name: Upload release and switch /srv/zag/ui
         env:
           HOST: ${{ vars.DEPLOY_HOST }}
           SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+          test -f apps/web/dist/index.html || { echo 'apps/web/dist is empty'; exit 1; }
+          mkdir -p ~/.ssh && ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
           RELEASE="/srv/zag/releases/$SHA"
-          rsync -az --delete apps/web/dist/ "deploy@$HOST:$RELEASE/"
-          ssh "deploy@$HOST" "set -e
-            ln -sfn '$RELEASE' /srv/zag/ui.tmp && mv -Tf /srv/zag/ui.tmp /srv/zag/ui
-            ls -dt /srv/zag/releases/* | tail -n +6 | xargs -r rm -rf
-            readlink -f /srv/zag/ui"
+          ssh "deploy@$HOST" "mkdir -p '$RELEASE'"
+          rsync -az --delete --chmod=D755,F644 apps/web/dist/ "deploy@$HOST:$RELEASE/"
+          ssh "deploy@$HOST" bash -s "$RELEASE" <<'EOF'
+          set -euo pipefail
+          RELEASE="$1"; UI=/srv/zag/ui
+          test -f "$RELEASE/index.html"
+          # nginx: root /srv/zag/ui — must be a symlink to the current release.
+          # A real directory (e.g. created by hand on host setup) would make
+          # `mv -T` fail, so move it aside once; it is pruned with old releases.
+          if [ -d "$UI" ] && [ ! -L "$UI" ]; then
+            mv "$UI" "/srv/zag/releases/manual-$(date +%s)"
+          fi
+          ln -sfn "$RELEASE" "$UI.tmp" && mv -Tf "$UI.tmp" "$UI"
+          # keep the current + 4 previous releases
+          ls -dt /srv/zag/releases/* | grep -vx "$RELEASE" | tail -n +5 | xargs -r rm -rf
+          echo "$UI -> $(readlink -f "$UI")"
+          ls "$UI"
+          EOF
 
   deploy-server:
     needs: detect
