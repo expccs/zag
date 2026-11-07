@@ -260,9 +260,9 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with: { fetch-depth: 0 }          # нужна история для --affected
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npx turbo run lint typecheck test build --affected
@@ -289,9 +289,9 @@ jobs:
       web: ${{ steps.affected.outputs.web }}
       server: ${{ steps.affected.outputs.server }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with: { fetch-depth: 0 }
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - id: affected
@@ -314,8 +314,8 @@ jobs:
     runs-on: self-hosted
     environment: production
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npx turbo run build --filter=@zag/web
@@ -337,7 +337,7 @@ jobs:
     runs-on: self-hosted
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: docker build -f apps/server/Dockerfile --build-arg APP_VERSION=${{ github.sha }} \
                -t zag-server:${{ github.sha }} -t zag-server:latest .
       - run: |

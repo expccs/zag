@@ -5,7 +5,7 @@ Handoff log between agent sessions. Newest entry on top. See the
 
 ---
 
-- **Timestamp:** 2026-11-07T11:20:00Z
+- **Timestamp:** 2026-11-07T11:40:00Z
 - **Agent / model:** Claude Fable 5.1
 - **What changed:** deploy moved to a **self-hosted runner on the ZAG
   host** (uncommitted, on `master`; commit `90919d5` before it still had
@@ -43,10 +43,15 @@ Handoff log between agent sessions. Newest entry on top. See the
     docs. `zag.conf` in git is now the certbot-processed host version
     (443 + 80→301); re-applied the `open_file_cache` removal and the
     `location = /health` proxy on top of it.
-- **Next step:** commit; copy `deploy/nginx/zag.conf` to
-  `/etc/nginx/sites-available/zag`, `nginx -t && systemctl reload nginx`;
-  rerun `deploy → all`; check `curl -s localhost:8090/health` on the host
-  and the site in a browser (socket status pill).
+  - **Deploy confirmed working by the user** (web + server via the
+    self-hosted runner, nginx on 443 → `/srv/zag/ui`, `/socket.io/` →
+    `127.0.0.1:8090`).
+  - `actions/checkout` and `actions/setup-node` bumped v4 → v5 in both
+    workflows (Node 20 deprecation warning in runner logs).
+- **Next step:** stage 2 of [`roadmap.md`](roadmap.md). Housekeeping
+  when convenient: decide whether
+  `deploy/**` + `deploy.yml` go into `turbo.json` `globalDependencies`
+  so infra-only commits redeploy automatically (today: `Run workflow → all`).
 - **Blockers / open questions:** if the repo is public, confirm the
   self-hosted runner is only used by `deploy.yml` (push to `master` /
   manual), never by PR workflows.
