@@ -1,4 +1,6 @@
-/* design-system.md § 6.2 */
+/* Figma: Home 8:3824 pill 56 × 44.5 r19.6, label Montserrat 12.5;
+   Mission 38:3029 pill 58 × 46 r20.4, label 12.9 (both use `home`);
+   interactive screens 52 × 41 r18.1, label 11.5 (`screen`). */
 .pill {
   display: flex;
   flex-direction: column;
@@ -35,7 +37,7 @@
   width: 56px;
   height: 44.5px;
   border-radius: 19.6px;
-  font-size: 12.2px;
+  font-size: 12.5px;
 }
 
 .label {

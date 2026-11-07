@@ -1,26 +1,33 @@
-/* Mission & Philosophy 38:3029, 395 × 2307 (design-system.md § 8). */
+/* Mission & Philosophy 38:3029 (395 × 2307, values read from Figma layers):
+   lang pill at y = 107, arrow centre y = 133.5, hero photo y = 197 h = 247,
+   title 33/Bold ends 16 above the photo edge, body Montserrat 14.8 at
+   x = 39 w = 335 from y = 503, photos at y = 1283 (316 / 260 / 194 high),
+   button pill 30 below the last photo, footer logos 65 below the button. */
 .screen {
-  display: flex;
-  justify-content: center;
   min-height: 100dvh;
   background: var(--color-black);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Full-bleed warm background: Figma layer `image 27` pre-rendered with its
+   Layer blur 73 (= CSS blur 36.5), contrast +0.10, saturation −0.06 onto a
+   393 × 1300 canvas at 2x (docs/design/assets/images/bg-interactive-blur-render.html);
+   black below the layer, as in the frame. */
+.top {
+  background: var(--color-black) url('/bg-interactive.jpg') center top / 100%
+    auto no-repeat;
+  padding-top: env(safe-area-inset-top);
 }
 
 .column {
   width: min(100%, var(--screen-width));
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-/* Warm blurred background of the interactive screens behind header + text. */
-.top {
-  background: url('/bg-interactive.jpg') center top / cover no-repeat;
+  margin: 0 auto;
 }
 
 .nav {
   position: relative;
-  height: 77px;
-  padding: 7px 23px 0 19px;
+  height: 102px;
+  padding: 12px 20px 0 0;
   display: flex;
   justify-content: flex-end;
 }
@@ -28,16 +35,16 @@
 .nav > :first-child {
   position: absolute;
   left: 19px;
-  top: 24px;
+  top: 29.5px;
 }
 
 .hero {
   position: relative;
-  height: 294px;
+  height: 247px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding-bottom: 40px;
+  padding-bottom: 16px;
 }
 
 .heroPhoto {
@@ -61,7 +68,7 @@
 }
 
 .body {
-  padding: 37px 29px 100px;
+  padding: 60px 20px 100px 39px;
   font-family: var(--font-montserrat);
   font-weight: 400;
   font-size: 14.8px;
@@ -69,7 +76,7 @@
 }
 
 .body:lang(uk) {
-  font-size: 14px;
+  font-size: 14.3px; /* 14 on the 385-wide UA frame 8:146 */
 }
 
 .body b {
@@ -78,6 +85,11 @@
 
 .paragraph {
   margin: 0;
+}
+
+/* Empty lines of the Figma text layer (`lh` = one line of the body). */
+.gap {
+  height: 1lh;
 }
 
 .list {
@@ -90,6 +102,7 @@
   font-size: 0.6em;
 }
 
+/* Full-bleed photo strip, no gaps. */
 .photos {
   display: flex;
   flex-direction: column;
@@ -106,7 +119,7 @@
 }
 
 .photo:nth-child(2) {
-  height: 253px;
+  height: 260px;
 }
 
 .photo:nth-child(3) {
@@ -116,5 +129,9 @@
 .cta {
   display: flex;
   justify-content: center;
-  padding: 36px var(--space-6) 40px;
+  padding: 30px var(--space-6) 65px;
+}
+
+.footer {
+  padding-bottom: 52px;
 }

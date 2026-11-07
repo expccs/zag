@@ -72,7 +72,7 @@ style, одна локальная компонента списка режим�
 
 ### Экраны интерактива
 
-Слой `image 27` — фото `assets/images/bg-interactive-source.jpg`
+Слой `image 27` — фото `assets/images/bg-interactive-source.png` (резкий исходник от заказчика; `.jpg` — ранняя выгрузка)
 (1080 × 1920, тёплые оранжевые волны на чёрном) с настройками Figma:
 `scaleMode FILL`, contrast +0.10, saturation −0.06 и **Layer blur 73 px**.
 Рендер на 393 × 852 лежит в `bg-interactive-rendered-393x852.png`.

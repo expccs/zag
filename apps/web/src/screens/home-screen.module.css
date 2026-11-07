@@ -1,4 +1,6 @@
-/* Layout follows Home 8:3824 on the 393 × 852 grid (design-system.md § 1, § 8). */
+/* Home 8:3824 on the 393 × 852 grid: title 32/ExtraBold at y = 358 (two
+   lines, 80 high), button frame at y = 470 (gap 32), lang pill at (317, 96),
+   footer logos at y = 788. Background photo covers the whole viewport. */
 .screen {
   position: relative;
   min-height: 100dvh;
@@ -20,8 +22,8 @@
 
 .lang {
   position: absolute;
-  top: calc(102px + env(safe-area-inset-top));
-  right: 23px;
+  top: calc(96px + env(safe-area-inset-top));
+  right: 20px;
 }
 
 .hero {
@@ -29,7 +31,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 48px;
+  gap: 32px;
   text-align: center;
 }
 
@@ -39,6 +41,7 @@
   font-weight: 800;
   font-size: 32px;
   line-height: normal;
+  white-space: pre-line;
   text-shadow: 0 3.5px 3.5px var(--color-shadow);
 }
 

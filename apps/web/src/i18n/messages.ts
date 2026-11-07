@@ -1,14 +1,18 @@
 /**
- * UI strings per language. Source: Figma «Додаток ZAG» — Home UA `8:3824`,
- * Home EN `11:4392`, Mission & Philosophy ENG `38:3029`. There is no UA
- * frame for Mission; its Ukrainian text is a translation of the ENG frame.
+ * UI strings per language, copied from Figma «Додаток ZAG»:
+ * Home UA `8:3824`, Home EN `11:4392` («Create / with Light»),
+ * Mission UA `8:146` (body in Ukrainian, title left in English by the
+ * designer), Mission ENG `38:3029`. Titles carry the frame's line break;
+ * `gap` blocks reproduce the empty lines of the Figma text layer.
  */
 import type { Language } from './language-context';
 
 export type Inline = string | { bold: string };
 
 export type Block =
-  { type: 'paragraph'; content: Inline[] } | { type: 'list'; items: string[] };
+  | { type: 'paragraph'; content: Inline[] }
+  | { type: 'list'; items: string[] }
+  | { type: 'gap'; lines: number };
 
 export interface MissionPhoto {
   src: string;
@@ -45,39 +49,41 @@ const uk: Messages = {
   langSwitchHint: 'Switch to English',
   back: 'Назад',
   home: {
-    title: 'Створюй світлом',
+    title: 'Створюй\nсвітлом',
     mission: 'Місія та філософія',
   },
   mission: {
-    title: 'Місія\nта філософія',
+    title: 'Mission\n& Philosophy',
     heroAlt: 'Фасад Zenyk Art Gallery вночі',
     body: [
       {
         type: 'paragraph',
         content: [
-          'Назва означає Zenyk Art Gallery і має глибокий символічний зміст. ',
-          'Галерею заснував ',
-          { bold: 'Зіновій Ярославович Козицький' },
-          ', засновник «Благодійного фонду Козицьких» та мистецького ',
-          'виставкового проєкту «Ми і світ», який від початку ',
-          'повномасштабного вторгнення популяризує українське мистецтво ',
-          'на світовій сцені. На сьогодні він організував понад 50 ',
-          'мистецьких проєктів у 17 країнах.',
+          'Назва розшифровується як Zenyk Art Gallery і має глибоке ',
+          'символічне значення. Галерея започаткована засновником ',
+          { bold: '«Благодійного фонду Козицького»' },
+          ' Козицьким Зіновієм Ярославовичем та мистецького виставкового ',
+          'проєкту «Ми і світ», що з початку повномасштабного вторгнення ',
+          'займається промоцією українського мистецтва на світовій арені. ',
+          'На сьогодні він організував понад 50 мистецьких проєктів у 17 ',
+          'країнах.',
         ],
       },
+      { type: 'gap', lines: 1 },
+      {
+        type: 'paragraph',
+        content: [
+          'ZENYK ART GALLERY названа та присвячена світлій памʼяті його ',
+          'онука – Зеника Козицького Молодшого.',
+        ],
+      },
+      { type: 'gap', lines: 2 },
       {
         type: 'paragraph',
         content: [
           { bold: 'ZENYK ART GALLERY' },
-          ' названа на честь і присвячена світлій пам’яті його онука, ',
-          'Зеника Козицького-молодшого.',
-        ],
-      },
-      {
-        type: 'paragraph',
-        content: [
-          'ZENYK ART GALLERY — перший безбар’єрний мистецький простір в ',
-          'Україні, створений за міжнародними стандартами доступності.',
+          ' – це перший в Україні безбар’єрний мистецький простір, ',
+          'створений за міжнародними стандартами доступності.',
         ],
       },
       { type: 'paragraph', content: ['Важливі ініціативи:'] },
@@ -85,23 +91,24 @@ const uk: Messages = {
         type: 'list',
         items: [
           'Освітні мистецькі події для дітей та молоді.',
-          'Арт-терапія для ветеранів і соціально вразливих груп.',
+          'Арт-терапії для ветеранів та соціально вразливих груп.',
           'Пільгові та безкоштовні квитки для соціально незахищених верств населення.',
-          'Інформаційні панелі шрифтом Брайля, аудіогіди та відео із субтитрами.',
-          'Простори, пристосовані для відвідувачів на кріслах колісних і з протезами.',
+          'Інформаційні панелі з брайлівським шрифтом, аудіогіди, відео із субтитрами.',
+          'Простори, адаптовані для відвідувачів на кріслах колісних та з протезами.',
         ],
       },
+      { type: 'gap', lines: 1 },
       {
         type: 'paragraph',
-        content: [{ bold: 'У ZENYK ART GALLERY будуть:' }],
+        content: [{ bold: 'ZENYK ART GALLERY поєднуватиме' }, ':'],
       },
       {
         type: 'list',
         items: [
-          'Виставкові зали, створені за технічними стандартами музеїв світового рівня.',
-          'Арт-шоп українських брендів на підтримку крафтових митців.',
-          'Книжкова зона з добірками мистецької літератури.',
-          '3D-зона для інтерактивних виставок.',
+          'Виставкові зали, створені за технічними стандартами світових музеїв.',
+          'Арт-крамницю українських брендів, яка підтримуватиме крафтових митців.',
+          'Книжкову зону з добірками мистецької літератури.',
+          '3D-зону для інтерактивних експозицій.',
           'Освітні та мистецькі події для різних вікових груп.',
         ],
       },
@@ -120,7 +127,7 @@ const en: Messages = {
   langSwitchHint: 'Перемкнути на українську',
   back: 'Back',
   home: {
-    title: 'Create with light',
+    title: 'Create\nwith Light',
     mission: 'Mission & Philosophy',
   },
   mission: {

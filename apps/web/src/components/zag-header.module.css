@@ -1,3 +1,4 @@
+/* Logo strip is 374 × 34 and may bleed past a padded column (Figma: 404 wide at x = −14). */
 .header {
   display: flex;
   align-items: flex-start;
@@ -7,6 +8,8 @@
 }
 
 .logo {
-  width: 100%;
+  flex: none;
+  width: 374px;
+  max-width: 100vw;
   height: 34px;
 }

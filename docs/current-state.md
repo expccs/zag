@@ -23,12 +23,36 @@ Handoff log between agent sessions. Newest entry on top. See the
     `GlassLink` (`home` / `mission` variants), `BackLink`. Photos resized
     to 1000 px into `public/mission/`, `public/bg-interactive.jpg`.
     Checked with headless Chrome screenshots against the Figma render.
+  - Typography verified layer-by-layer via remote Figma MCP (`use_figma`
+    read-only on `8:3824`, `11:4392`, `38:3029`): every text has
+    line-height AUTO (= CSS `normal`) and letter-spacing 0; sizes match
+    (Unbounded ExtraBold 32 / Bold 33 / Regular 17.8 + 18.5, Montserrat
+    14.8 body, 12.5 lang label). Fixes from that pass: Home titles carry
+    the frame's line break («Створюй / світлом», «Create / with Light»),
+    title→button gap 32, Mission text inset 39 / 20, second photo 260,
+    footer logos 138 × 38 and 88 × 25 (design-system.md § 1 / § 6.2 still
+    list the older 127 × 35 and 12.2 values). Backgrounds and photos are
+    full-bleed on every viewport; only text, nav and buttons sit in the
+    393 column (user request).
+  - Interactive background: user supplied the sharp source
+    (`docs/design/assets/images/bg-interactive-source.png`, 1080 × 1920).
+    `apps/web/public/bg-interactive.jpg` (786 × 2600) is it rendered with
+    the Figma layer geometry of `image 27` (519 × 1038 at −55/−76) and
+    its Layer blur 73 (CSS blur 36.5), contrast 1.1, saturate 0.94 via
+    headless Chrome — recipe in `bg-interactive-blur-render.html` next to
+    the source; CSS maps it 1:1 (`100% auto`, top) with black below.
+  - Mission texts re-read from Figma: `8:146` is the **UA** frame (385
+    wide): body Montserrat 14 (→ 14.3 on 393) with bold «Благодійного
+    фонду Козицького», empty lines between paragraphs (`gap` blocks),
+    button «Доторкнись і твори», title kept in English «Mission &
+    Philosophy» by the designer. `38:3029` is ENG. `messages.ts` now
+    carries both verbatim; my earlier UA translation is gone.
 - **Next step:** connect `state:update` screens (`maintenance` /
   `disabled` / `schedule`, «Зв'язок втрачено») behind an interactive
   route, then the interactive flow of stage 4.
-- **Blockers / open questions:** official UA text for Mission and the
-  Home EN title («Create with light» assumed, frame `11:4392` not read);
-  where «Touch & Create» should lead before stage 4 (now `/`).
+- **Blockers / open questions:** UA Mission title is English in Figma
+  `8:146` («Mission & Philosophy») — confirm with the designer; where
+  «Touch & Create» should lead before stage 4 (now `/`).
 
 ---
 

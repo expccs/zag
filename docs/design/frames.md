@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|
 | `8:3824` | Home UA | MAIN + категорії | Home | 393×852 | -7323 |
 | `11:4392` | Home EN | MAIN + категорії | Home | 393×852 | -6894 |
-| `8:146` | Mission & Philosophy ENG | ІНФО ЛЕНДІНГ | Mission & Philosophy | 385×2307 | -6140 |
+| `8:146` | Mission & Philosophy ENG (текст UA) | ІНФО ЛЕНДІНГ | Mission & Philosophy, UA | 385×2307 | -6140 |
 | `38:3029` | Mission & Philosophy ENG | ІНФО ЛЕНДІНГ | Mission & Philosophy | 395×2307 | -5721 |
 | `34:2820` | Touch & Create UA | СПОВІЩЕННЯ | Черга / таймер | 393×852 | -4825 |
 | `47:3825` | Touch & Create ENG | СПОВІЩЕННЯ | Черга / таймер | 393×852 | -4376 |
