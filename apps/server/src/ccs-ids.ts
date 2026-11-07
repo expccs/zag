@@ -5,7 +5,7 @@ import type { ZagFlag } from '@zag/protocol';
 // defaults for CCS_STATE_GROUP / CCS_PROGRAM_*; env still overrides them.
 
 /** ZAG project id: login `project`, `joinRoom` room, `getPrograms` query. */
-export const CCS_PROJECT_ID = '676ed9a3108c970013dcb321';
+export const CCS_PROJECT_ID = 'hzwbupoitdpg';
 
 /** Group "Public app state": one SWITCH program per app flag. */
 export const CCS_STATE_GROUP_ID = '6aef145253257f190d66c47b';
