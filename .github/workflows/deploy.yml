@@ -95,10 +95,12 @@ jobs:
             mv "$UI" "/srv/zag/releases/manual-$(date +%s)"
           fi
           ln -sfn "$RELEASE" "$UI.tmp" && mv -Tf "$UI.tmp" "$UI"
-          # keep the current + 4 previous releases
-          ls -dt /srv/zag/releases/* | grep -vx "$RELEASE" | tail -n +5 | xargs -r rm -rf
           echo "$UI -> $(readlink -f "$UI")"
           ls "$UI"
+          # keep the current + 4 previous releases (grep exits 1 when there
+          # are no others, e.g. on the first deploy — that is not an error)
+          OLD=$(ls -dt /srv/zag/releases/* | grep -vx "$RELEASE" || true)
+          echo "$OLD" | tail -n +5 | grep . | xargs -r rm -rf || true
 
   deploy-server:
     needs: detect
@@ -124,7 +126,7 @@ jobs:
           test -f /srv/zag/.env || { echo '::error::/srv/zag/.env is missing (deploy/README.md)'; exit 1; }
           docker compose -f deploy/docker-compose.yml up -d --remove-orphans server
           for i in $(seq 1 15); do
-            curl -fsS localhost:8080/health && exit 0
+            curl -fsS localhost:8090/health && exit 0
             sleep 2
           done
           echo '::error::server did not become healthy'

@@ -5,7 +5,7 @@ Handoff log between agent sessions. Newest entry on top. See the
 
 ---
 
-- **Timestamp:** 2026-11-07T10:45:00Z
+- **Timestamp:** 2026-11-07T11:20:00Z
 - **Agent / model:** Claude Fable 5.1
 - **What changed:** deploy moved to a **self-hosted runner on the ZAG
   host** (uncommitted, on `master`; commit `90919d5` before it still had
@@ -29,10 +29,24 @@ Handoff log between agent sessions. Newest entry on top. See the
     — web: `mkdir: Permission denied` on `/srv/zag/releases`; server:
     `permission denied … /var/run/docker.sock`. `deploy/README.md` now
     targets user `expo` with the exact fix commands.
-- **Next step:** on the host run the block from `deploy/README.md`
-  (`usermod -aG docker expo`, `chown -R expo:expo /srv/zag`, restart the
-  runner service, `/srv/zag/.env`, new `zag.conf` + `nginx -t`), then
-  `Actions → deploy → Run workflow → all`.
+  - Second run (host perms fixed): web step installed the release and
+    switched the symlink, then exited 1 silently — the prune pipeline
+    `grep -vx "$RELEASE"` returns 1 when no other release exists
+    (`set -o pipefail`). Fixed: prune is now non-fatal and runs after the
+    result echo; simulated first-deploy + prune locally. Server: image
+    built OK, `compose up` failed — `127.0.0.1:8080` already in use on the
+    host by something outside project `zag` (network `zag_default` was
+    created fresh).
+  - Host port 8080 was taken by another service → server now published on
+    `127.0.0.1:8090` (container port stays 8080): `deploy/docker-compose.yml`,
+    `deploy/nginx/zag.conf` (`proxy_pass`), health check in `deploy.yml`,
+    docs. `zag.conf` in git is now the certbot-processed host version
+    (443 + 80→301); re-applied the `open_file_cache` removal and the
+    `location = /health` proxy on top of it.
+- **Next step:** commit; copy `deploy/nginx/zag.conf` to
+  `/etc/nginx/sites-available/zag`, `nginx -t && systemctl reload nginx`;
+  rerun `deploy → all`; check `curl -s localhost:8090/health` on the host
+  and the site in a browser (socket status pill).
 - **Blockers / open questions:** if the repo is public, confirm the
   self-hosted runner is only used by `deploy.yml` (push to `master` /
   manual), never by PR workflows.

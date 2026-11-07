@@ -7,7 +7,7 @@ services:
     image: zag-server:${SERVER_TAG:-latest} # built locally by deploy.yml
     env_file: /srv/zag/.env
     ports:
-      - '127.0.0.1:8080:8080' # reachable only by host nginx
+      - '127.0.0.1:8090:8080' # host 8090 → container 8080; reachable only by host nginx
     restart: unless-stopped
     logging:
       driver: json-file

@@ -201,7 +201,7 @@ services:
   server:
     image: zag-server:${SERVER_TAG:-latest}   # собран локально deploy.yml
     env_file: /srv/zag/.env
-    ports: ["127.0.0.1:8080:8080"]   # доступен только nginx
+    ports: ["127.0.0.1:8090:8080"]   # хост 8090 → контейнер 8080, доступен только nginx
     restart: unless-stopped
 ```
 
@@ -223,13 +223,13 @@ location = /manifest.webmanifest { add_header Cache-Control "no-cache"; }
 location / { try_files $uri /index.html; }
 
 location /socket.io/ {
-  proxy_pass http://127.0.0.1:8080;
+  proxy_pass http://127.0.0.1:8090;
   proxy_http_version 1.1;
   proxy_set_header Upgrade $http_upgrade;
   proxy_set_header Connection "upgrade";
   proxy_read_timeout 3600s;
 }
-location = /health { proxy_pass http://127.0.0.1:8080; }
+location = /health { proxy_pass http://127.0.0.1:8090; }
 ```
 
 Релизы UI лежат в `/srv/zag/releases/<sha>/`, `/srv/zag/ui` — симлинк
@@ -328,7 +328,8 @@ jobs:
           # /srv/zag/ui — симлинк; если на хосте лежит обычный каталог, он
           # сначала убирается в releases/manual-<ts>
           ln -sfn "$R" /srv/zag/ui.tmp && mv -Tf /srv/zag/ui.tmp /srv/zag/ui
-          ls -dt /srv/zag/releases/* | grep -vx "$R" | tail -n +5 | xargs -r rm -rf
+          OLD=$(ls -dt /srv/zag/releases/* | grep -vx "$R" || true)   # на первом деплое пусто
+          echo "$OLD" | tail -n +5 | grep . | xargs -r rm -rf || true
 
   deploy-server:
     needs: detect
@@ -341,7 +342,7 @@ jobs:
                -t zag-server:${{ github.sha }} -t zag-server:latest .
       - run: |
           SERVER_TAG=${{ github.sha }} docker compose -f deploy/docker-compose.yml up -d server
-          curl -fsS --retry 15 --retry-delay 2 --retry-all-errors localhost:8080/health
+          curl -fsS --retry 15 --retry-delay 2 --retry-all-errors localhost:8090/health
       - run: |   # чистим старые образы: остаются текущий тег и :latest
           docker images zag-server --format '{{.Tag}}' \
             | grep -vx -e ${{ github.sha }} -e latest | xargs -r -I{} docker rmi zag-server:{}

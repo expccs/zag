@@ -259,7 +259,7 @@ Socket.IO + `/health`), он не раздаёт статику.
    же origin, `/socket.io/` проксирует nginx). Вшивается в CI.
 3. nginx: `/assets/` — `immutable`; `index.html`, `sw.js`,
    `manifest.webmanifest` — `no-cache`; `try_files $uri /index.html`;
-   проксируются только `/socket.io/` и `/health` на `127.0.0.1:8080`.
+   проксируются только `/socket.io/` и `/health` на `127.0.0.1:8090`.
    Полный конфиг, compose и CI — `docs/monorepo.md` § 6–7.
 4. Проверка перед релизом: в `apps/web` нет серверного кода и
    зависимостей `next`, `express` и т.п.; в `deploy/docker-compose.yml`

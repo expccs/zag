@@ -18,7 +18,7 @@ sudo systemctl restart 'actions.runner.*'
 sudo -u expo docker ps                                # должно работать без sudo
 
 # env сервера (CCS, TD — docs/backend/shared-modules.md § 7); в git не попадает
-sudo -u expo nano /srv/zag/.env          # PORT=8080, ALLOWED_ORIGINS=https://<domain>, CCS_*
+sudo -u expo nano /srv/zag/.env          # PORT=8080 (внутри контейнера), ALLOWED_ORIGINS=https://<domain>, CCS_*
 
 # nginx на хосте
 sudo cp nginx/zag.conf /etc/nginx/sites-available/zag
@@ -35,7 +35,7 @@ sudo nginx -t && sudo systemctl reload nginx
 `sudo ./svc.sh install <user> && sudo ./svc.sh start`.
 
 Runner должен видеть `docker` (группа `docker`), писать в `/srv/zag` и
-дёргать `localhost:8080/health`. Node ставит `actions/setup-node`
+дёргать `localhost:8090/health` (хостовый порт контейнера). Node ставит `actions/setup-node`
 в кэш раннера, системный Node не нужен.
 
 Если репозиторий публичный, не давать self-hosted раннеру `pull_request`-
