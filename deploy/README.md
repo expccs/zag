@@ -18,7 +18,10 @@ sudo systemctl restart 'actions.runner.*'
 sudo -u expo docker ps                                # должно работать без sudo
 
 # env сервера (CCS, TD — docs/backend/shared-modules.md § 7); в git не попадает
-sudo -u expo nano /srv/zag/.env          # PORT=8080 (внутри контейнера), ALLOWED_ORIGINS=https://<domain>, CCS_*
+sudo -u expo nano /srv/zag/.env
+# ALLOWED_ORIGINS=https://<domain>; PORT=8080 (внутри контейнера);
+# CCS_MODE=offline пока нет учётки CCS — без неё в live/dry-run обязательны
+# CCS_LOGIN и CCS_PASSWORD, иначе сервер падает на старте (см. .env.example)
 
 # nginx на хосте
 sudo cp nginx/zag.conf /etc/nginx/sites-available/zag

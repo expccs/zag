@@ -5,6 +5,140 @@ Handoff log between agent sessions. Newest entry on top. See the
 
 ---
 
+- **Timestamp:** 2026-11-07T15:00:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:** CCS ids are project constants (uncommitted, on `master`):
+  - `apps/server/src/ccs-ids.ts`: `CCS_PROJECT_ID`, `CCS_STATE_GROUP_ID`
+    (`6aef145253257f190d66c47b`), `CCS_STATE_PROGRAMS` (techPause =
+    Maintenance `qduuwcanagbl`, interactive = Allow interactive
+    `qxcsxqatyupx`, locationRestriction = Location restriction
+    `azpuqosabwug`, schedule = Schedule `edbyrttglacr`),
+    `CCS_CONTROL_PROGRAMS` (Session start `ospyruigxyop`, Session end
+    `fwzxaqlwzwbu`). Mapping came from the user's `state.json` dump, moved
+    to `docs/backend/ccs-state-group.json`.
+  - `ConfigLoader`: `CCS_STATE_GROUP` / `CCS_PROGRAM_*` are now optional
+    overrides of the constants (offline keeps `offline:*`). New
+    `config.test.ts` (5 tests). `.env.example`, `ccs-ids.md`,
+    `shared-modules.md` § 7 updated.
+  - User decision: the project id is the constant `CCS_PROJECT_ID`
+    (`676ed9a3108c970013dcb321`) — removed from `CloudCredentials`,
+    `CloudConfig`, env (`CCS_PROJECT` gone) and docs; `CloudClient` still
+    checks it against `/api/user/projects` at login.
+- **Next step:** set `CCS_MODE=dry-run`, `CCS_LOGIN`, `CCS_PASSWORD` on the
+  host `.env`, verify `state` in `/health` follows the CCS switches and
+  that login accepts `CCS_PROJECT_ID` as the project (otherwise the error
+  lists the account's projectUIDs). Then geo-fence, queue, TouchDesigner.
+- **Blockers / open questions:** semantics of the "Schedule" switch
+  (1 = outside schedule assumed); `_id` of the "Public app controls" group.
+
+---
+
+- **Timestamp:** 2026-11-07T14:30:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:** server refactored to the OOP style the user asked for
+  (rule recorded in `AGENTS.md`; uncommitted, on `master`):
+  - No module-level functions in `apps/server/src` + `scripts`:
+    `StructuredLogger` (was `createLogger`), `ConfigLoader.load` +
+    private `EnvReader` (was `loadConfig`), `HealthHttpServer.create`,
+    `ZagSocketServer` (`io`, `clientsCount`, `broadcastState`, `close`,
+    `static resolveClientIp`), `CloudGatewayFactory.create` (was
+    `createCloudGateway`), `CloudClient` helpers as static/private methods,
+    `ZagAppState extends AppState<ZagFlag>` with `publicState` getter and
+    `static resolveScreen` (was `resolveScreen` / `toPublicState`),
+    `Application` composition root with `static main()` in `bootstrap.ts`,
+    `CcsProbe.run()` in the probe script.
+  - Tests follow (fake CCS is now `FakeCcsServer` class); added
+    `CloudGatewayFactory`, `resolveClientIp`, 404 and broadcast tests —
+    27 green. `turbo lint typecheck test build` green, offline smoke ok.
+- **Next step:** unchanged — map the 3 STATE switches to flags
+  (`docs/backend/ccs-ids.md`, `npm run ccs:probe`), then geo-fence,
+  session queue, TouchDesigner, socket API § 4 — all as classes.
+- **Blockers / open questions:** STATE has 3 switches vs 4 flags (see
+  previous entry).
+
+---
+
+- **Timestamp:** 2026-11-07T13:30:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:** stage 2 continued — `AppState` ported and wired
+  (uncommitted, on `master`):
+  - `apps/server/src/app-state.ts` from the reference: `AppState<F>`
+    (`sync`, `apply`, `bind`, `reference`, `change`/`synced` events),
+    `resolveScreen`, `toPublicState` (now `ZagAppState`). Tolerates `state: null` programs
+    (CCS buttons). `config.ts`: `state` section (`CCS_STATE_GROUP`,
+    `CCS_PROGRAM_*` required outside offline, `STATE_OVERRIDES`, SAFE vs
+    OFFLINE initial). `bootstrap.ts`: bind to the gateway, resync on
+    `connect`/`reconnect`, broadcast `state:update`, `state` in `/health`;
+    offline fake CCS gets a state group from the config so `synced` is
+    true. `socket-server.ts`: `state:update` on connect + `state:get`.
+    `cloud-client.ts`: `ProgramStateChange.groupID?`, `CommandProgram.state`
+    nullable, `createCloudGateway(config, logger, offlineGroups)`.
+  - Tests: `app-state.test.ts` (7), socket `state:get` test; 23 total green.
+  - `docs/backend/ccs-ids.md`: ids from the user's live `getPrograms` log —
+    `projectID 676ed9a3108c970013dcb321`, buttons `ospyruigxyop` (Session
+    start, WITH_PARAMS) / `fwzxaqlwzwbu` (Session end), STATE group
+    `6aef145253257f190d66c47b` with programs `qxcsxqatyupx`,
+    `edbyrttglacr`, `qduuwcanagbl`. The log was truncated: switch names →
+    flag mapping and `projectUID` unknown.
+  - The user's inline live-login probe at the end of `cloud-client.ts`
+    (hard-coded password) was removed again; `npm run ccs:probe` replaces it.
+- **Next step:** run `ccs:probe` (or ask the user for the full log) to map
+  the three STATE switches to flags and get `projectUID`; fill
+  `/srv/zag/.env` (`CCS_MODE=dry-run`) and verify `state` in `/health` on
+  the host. Then geo-fence, session queue, TouchDesigner, socket API § 4.
+- **Blockers / open questions:** STATE has 3 switches but the server
+  expects 4 flags (`techPause`, `interactive`, `locationRestriction`,
+  `schedule`) — which one is missing and should it be a 4th CCS switch or
+  a `STATE_OVERRIDES` default?
+
+---
+
+- **Timestamp:** 2026-11-07T12:00:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:** stage 2 started — CCS client ported into the server
+  (uncommitted, on `master`):
+  - `apps/server/src/cloud-client.ts` from `docs/backend/reference/`:
+    `CloudClient` (fetch login, socket.io `/users` + `path: /socket`,
+    `joinRoom`, `getPrograms`, `execCommand` with dry-run), `FakeCloudClient`
+    (offline), `createCloudGateway(config, logger)`; structured logger
+    instead of `console`. Fix vs reference (back-ported to the reference
+    file too): after `io server disconnect` and after a middleware token
+    rejection socket.io does **not** reconnect by itself — client now
+    re-logins and calls `socket.connect()` on the same socket.
+  - `config.ts`: `cloud` section (`CCS_MODE` default `live`, `CCS_URL`,
+    `CCS_LOGIN`/`CCS_PASSWORD` required outside offline; `CCS_PROJECT`
+    later replaced by the `CCS_PROJECT_ID` constant).
+    `resolveProject` always fetches `/api/user/projects` and requires the
+    configured `projectUID` to be in it; empty list or unknown project →
+    `CloudProjectError`, not retried, `connect()` rejects (user decision,
+    replaces the reference's "first project" fallback).
+    `bootstrap.ts`: gateway created at start, connects in the background
+    with retries, events logged under `module: ccs`, `/health` reports
+    `ccs: { mode, connected, projectUID }`, `close()` on shutdown.
+    `socket.io-client` moved to runtime deps (Dockerfile prunes dev).
+  - `cloud-client.test.ts`: 10 tests against a fake CCS (http + socket.io),
+    see `shared-modules.md` § 9. `turbo lint typecheck test build` green;
+    smoke: offline `/health` ok, live without creds fails fast with
+    `ConfigError: CCS_LOGIN is required`, dry-run with unreachable CCS keeps
+    serving and retries login with backoff.
+  - Host `/srv/zag/.env` has `CCS_MODE=offline`, so the deploy keeps working
+    without CCS credentials. `.env.example`, `deploy/README.md`,
+    `roadmap.md` (stage 2 status), `shared-modules.md` § 1.1/§ 9 updated.
+  - `apps/server/scripts/ccs-probe.ts` (`npm run ccs:probe -w @zag/server`):
+    logs in with `CCS_*` from `.env` in dry-run and prints group/program
+    `_id`s for `CCS_STATE_GROUP` / `CCS_PROGRAM_*`. The user has a CCS
+    account (`zag`); a hard-coded probe with the password was removed from
+    `cloud-client.ts` — credentials belong in the gitignored `.env`.
+- **Next step:** run `ccs:probe` with the real account to get `projectUID`
+  and ids, then continue stage 2 with `app-state.ts` (`AppState<ZagFlag>`
+  bound to the gateway, `CCS_STATE_GROUP` / `CCS_PROGRAM_*`, `state:update`
+  over Socket.IO), then geo-fence, queue, TouchDesigner.
+- **Blockers / open questions:** CCS account, `projectUID`, group and
+  program ids for ZAG are still needed from Expolight before `dry-run`/`live`
+  can be tried.
+
+---
+
 - **Timestamp:** 2026-11-07T11:40:00Z
 - **Agent / model:** Claude Fable 5.1
 - **What changed:** deploy moved to a **self-hosted runner on the ZAG
@@ -91,7 +225,7 @@ Handoff log between agent sessions. Newest entry on top. See the
     GitHub (nothing pushed yet).
 - **Next step:** commit + push to trigger `ci.yml`; set up the host and
   `production` environment per `deploy/README.md`, then run `deploy →
-  all`. Then stage 2: move `docs/backend/reference/*.ts` into
+all`. Then stage 2: move `docs/backend/reference/*.ts` into
   `apps/server/src` and wire the full § 4 API.
 - **Blockers / open questions:** `deploy/` as `@zag/deploy` package
   (monorepo.md § 7) still undecided — currently a plain folder, nginx /
@@ -198,8 +332,6 @@ Handoff log between agent sessions. Newest entry on top. See the
   screen have no design.
 
 ---
-
-
 
 - **Timestamp:** 2026-10-29T09:50:00Z
 - **Agent / model:** Claude Fable 5.1

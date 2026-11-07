@@ -2,8 +2,10 @@ import type { IncomingMessage, Server as HttpServer } from 'node:http';
 import { Server, type Socket } from 'socket.io';
 import {
   AUTH_ERROR,
+  EVENTS,
   isValidUserId,
   type ClientToServerEvents,
+  type PublicState,
   type ServerToClientEvents,
   type SocketData,
 } from '@zag/protocol';
@@ -23,58 +25,71 @@ export type ZagSocket = Socket<
   SocketData
 >;
 
+type NextHandler = (error?: Error) => void;
+
 export interface SocketServerOptions {
   allowedOrigins: string[];
   trustProxy: boolean;
   logger: Logger;
+  /** Current app state, pushed on connect and served by `state:get`. */
+  state: () => PublicState;
 }
 
-const firstHeader = (value: string | string[] | undefined): string => {
-  if (Array.isArray(value)) return value[0] ?? '';
-  return value ?? '';
-};
+export class ZagSocketServer {
+  readonly io: ZagServer;
 
-export const resolveClientIp = (
-  request: IncomingMessage,
-  trustProxy: boolean,
-): string => {
-  if (trustProxy) {
-    const forwarded = firstHeader(request.headers['x-forwarded-for']);
-    const first = forwarded.split(',')[0]?.trim();
-    if (first) return first;
+  private readonly logger: Logger;
+  private readonly trustProxy: boolean;
+  private readonly state: () => PublicState;
+
+  constructor(httpServer: HttpServer, options: SocketServerOptions) {
+    this.logger = options.logger;
+    this.trustProxy = options.trustProxy;
+    this.state = options.state;
+    this.io = new Server(httpServer, {
+      transports: ['websocket'],
+      cors: { origin: options.allowedOrigins },
+    });
+    this.io.use((socket, next) => this.authenticate(socket, next));
+    this.io.on('connection', (socket) => this.handleConnection(socket));
   }
-  return request.socket.remoteAddress ?? 'unknown';
-};
 
-const describeConnection = (socket: ZagSocket, trustProxy: boolean) => {
-  const { request } = socket;
-  return {
-    socketId: socket.id,
-    userId: socket.data.userId,
-    transport: socket.conn.transport.name,
-    ip: resolveClientIp(request, trustProxy),
-    userAgent: firstHeader(request.headers['user-agent']),
-    origin: firstHeader(request.headers.origin),
-    recovered: socket.recovered,
-  };
-};
+  get clientsCount(): number {
+    return this.io.engine.clientsCount;
+  }
 
-export const createSocketServer = (
-  httpServer: HttpServer,
-  options: SocketServerOptions,
-): ZagServer => {
-  const { logger, trustProxy } = options;
-  const io: ZagServer = new Server(httpServer, {
-    transports: ['websocket'],
-    cors: { origin: options.allowedOrigins },
-  });
+  broadcastState(state: PublicState): void {
+    this.io.emit(EVENTS.stateUpdate, state);
+  }
 
-  io.use((socket, next) => {
+  close(): void {
+    this.io.close();
+  }
+
+  static resolveClientIp(
+    request: IncomingMessage,
+    trustProxy: boolean,
+  ): string {
+    if (trustProxy) {
+      const header = request.headers['x-forwarded-for'];
+      const forwarded = ZagSocketServer.firstHeader(header);
+      const first = forwarded.split(',')[0]?.trim();
+      if (first) return first;
+    }
+    return request.socket.remoteAddress ?? 'unknown';
+  }
+
+  private static firstHeader(value: string | string[] | undefined): string {
+    if (Array.isArray(value)) return value[0] ?? '';
+    return value ?? '';
+  }
+
+  private authenticate(socket: ZagSocket, next: NextHandler): void {
     const { userId } = socket.handshake.auth;
     if (!isValidUserId(userId)) {
-      logger.warn('socket rejected', {
+      this.logger.warn('socket rejected', {
         socketId: socket.id,
-        ip: resolveClientIp(socket.request, trustProxy),
+        ip: ZagSocketServer.resolveClientIp(socket.request, this.trustProxy),
         reason: AUTH_ERROR,
       });
       next(new Error(AUTH_ERROR));
@@ -82,25 +97,38 @@ export const createSocketServer = (
     }
     socket.data.userId = userId;
     next();
-  });
+  }
 
-  io.on('connection', (socket) => {
+  private handleConnection(socket: ZagSocket): void {
     const connectedAt = Date.now();
-    const info = describeConnection(socket, trustProxy);
-    logger.info('socket connected', {
+    const info = this.describeConnection(socket);
+    this.logger.info('socket connected', {
       ...info,
-      clients: io.engine.clientsCount,
+      clients: this.clientsCount,
     });
+    socket.emit(EVENTS.stateUpdate, this.state());
+    socket.on(EVENTS.stateGet, (ack) => ack(this.state()));
 
     socket.on('disconnect', (reason) => {
-      logger.info('socket disconnected', {
+      this.logger.info('socket disconnected', {
         socketId: info.socketId,
         userId: info.userId,
         reason,
         durationMs: Date.now() - connectedAt,
       });
     });
-  });
+  }
 
-  return io;
-};
+  private describeConnection(socket: ZagSocket) {
+    const { request } = socket;
+    return {
+      socketId: socket.id,
+      userId: socket.data.userId,
+      transport: socket.conn.transport.name,
+      ip: ZagSocketServer.resolveClientIp(request, this.trustProxy),
+      userAgent: ZagSocketServer.firstHeader(request.headers['user-agent']),
+      origin: ZagSocketServer.firstHeader(request.headers.origin),
+      recovered: socket.recovered,
+    };
+  }
+}

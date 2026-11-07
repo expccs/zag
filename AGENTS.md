@@ -28,10 +28,18 @@ In addition to the rule above, apply both:
   - `js-conventions` — JS/TS style and naming
   - `error-handling` — error handling conventions
   - `js-gof` — GoF patterns in idiomatic JavaScript (pair with
-    `gof-patterns` above: GoF for the *what*, `js-gof` for the *how*)
+    `gof-patterns` above: GoF for the _what_, `js-gof` for the _how_)
   - `data-structures`, `js-data-structures`,
     `metautil-data-structures` — choosing and implementing collections
   - `npm-publish` — only when preparing a package for release
+
+**Server code style (`apps/server`, its `scripts/`):** OOP. No
+module-level functions (`const fn = () => {}`) or `createX()` factories;
+put logic on the class it belongs to as a `static` method (pure helpers,
+factories, `main`) or a `private` method. Composition root is the
+`Application` class in `bootstrap.ts`. This overrides the "functions as
+const arrows" default of `js-conventions` for the server only; tests may
+keep small helper functions, but fakes (servers, gateways) are classes.
 
 `.agents/skills/metaskills` is a symlink into
 `node_modules/metaskills/skills`. After a fresh `npm install` run

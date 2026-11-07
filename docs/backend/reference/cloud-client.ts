@@ -6,7 +6,8 @@ export const CCS_DEFAULT_URL = 'https://admin.expolightcontrols.net';
 export interface CloudCredentials {
   login: string;
   password: string;
-  project?: string;
+  /** projectUID the account must own; checked against /api/user/projects. */
+  project: string;
 }
 
 export interface LoginData {
@@ -86,9 +87,17 @@ const DEFAULT_LOGIN_RETRY_MAX_MS = 30_000;
 const SOCKET_TIMEOUT_MS = 20_000;
 const SOCKET_RECONNECT_MIN_MS = 1_000;
 const SOCKET_RECONNECT_MAX_MS = 5_000;
+const SERVER_DISCONNECT = 'io server disconnect';
 
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
+
+export class CloudProjectError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CloudProjectError';
+  }
+}
 
 const postJson = async <T>(url: string, body: unknown): Promise<T> => {
   const response = await fetch(url, {
@@ -111,7 +120,7 @@ export class CloudClient
   timezone: string | null = null;
 
   private socket: Socket | null = null;
-  private project: string | undefined;
+  private readonly project: string;
   private refreshing: Promise<void> | null = null;
   private closed = false;
 
@@ -185,16 +194,24 @@ export class CloudClient
     return this.socket;
   }
 
+  // Always verified against the account's project list: a wrong CCS_PROJECT
+  // is a configuration error and must fail loudly instead of retrying.
   private async resolveProject(): Promise<string> {
-    if (this.project) return this.project;
     const projects = await postJson<Array<{ projectUID: string }>>(
       `${this.serverUrl}/api/user/projects`,
       this.credentials,
     );
-    const first = projects[0];
-    if (!first) throw new Error('CCS account has no projects');
-    this.project = first.projectUID;
-    return first.projectUID;
+    if (projects.length === 0) {
+      throw new CloudProjectError('CCS account has no projects');
+    }
+    const found = projects.some((item) => item.projectUID === this.project);
+    if (!found) {
+      const available = projects.map((item) => item.projectUID).join(', ');
+      throw new CloudProjectError(
+        `CCS project "${this.project}" not found; available: ${available}`,
+      );
+    }
+    return this.project;
   }
 
   private async login(): Promise<LoginData> {
@@ -220,7 +237,7 @@ export class CloudClient
       try {
         return await this.login();
       } catch (error) {
-        if (this.closed) throw error;
+        if (this.closed || error instanceof CloudProjectError) throw error;
         const message = error instanceof Error ? error.message : String(error);
         this.logger.warn(
           `[ccs] login failed: ${message}; retry in ${delayMs}ms`,
@@ -249,9 +266,15 @@ export class CloudClient
     });
     socket.on('disconnect', (reason) => {
       this.emit('disconnect', reason);
+      // socket.io never reconnects by itself after a server-side disconnect
+      // (CCS drops sockets whose token expired), so log in again by hand.
+      if (reason === SERVER_DISCONNECT) this.recover();
     });
     socket.on('connect_error', (error) => {
-      this.handleConnectError(error);
+      this.logger.warn(`[ccs] connect_error: ${error.message}`);
+      // active === false: a middleware denied the stale token and the client
+      // gave up; network errors keep active === true and retry on their own.
+      if (!socket.active) this.recover();
     });
     socket.on('programStateChange', (change: ProgramStateChange) => {
       this.emit('stateChange', change);
@@ -262,8 +285,7 @@ export class CloudClient
     return socket;
   }
 
-  private handleConnectError(error: Error): void {
-    this.logger.warn(`[ccs] connect_error: ${error.message}`);
+  private recover(): void {
     if (this.closed || this.refreshing) return;
     this.refreshing = this.refreshToken().finally(() => {
       this.refreshing = null;
@@ -272,7 +294,10 @@ export class CloudClient
 
   private async refreshToken(): Promise<void> {
     const login = await this.loginWithRetry();
-    if (this.socket) this.socket.auth = { token: login.accessToken };
+    const socket = this.socket;
+    if (!socket || this.closed) return;
+    socket.auth = { token: login.accessToken };
+    if (!socket.active) socket.connect();
   }
 
   private waitForConnect(socket: Socket): Promise<void> {

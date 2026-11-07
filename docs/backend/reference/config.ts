@@ -22,7 +22,7 @@ export interface BackendConfig {
     url: string;
     login: string;
     password: string;
-    project: string | undefined;
+    project: string;
     groupID: string;
     programs: Record<ZagFlag, string>;
   };
@@ -158,7 +158,7 @@ export const loadConfig = (
       url: env.CCS_URL ?? 'https://admin.expolightcontrols.net',
       login: online ? readString(env, 'CCS_LOGIN') : '',
       password: online ? readString(env, 'CCS_PASSWORD') : '',
-      project: env.CCS_PROJECT || undefined,
+      project: online ? readString(env, 'CCS_PROJECT') : '',
       groupID: online ? readString(env, 'CCS_STATE_GROUP') : '',
       programs: readPrograms(env, online),
     },

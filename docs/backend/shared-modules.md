@@ -2,12 +2,12 @@
 
 Дата анализа: 2026-11-02. Исходники на машине разработчика:
 
-| Проект | Путь | Назначение | Последний коммит |
-|---|---|---|---|
-| tv-tower-back | `~/tv-tower-back` (`src/service/*`) | Бэкенд телебашни Ереван: оплата, очередь анимаций, CCS | 2026-10-07 |
-| kutaisi-public | `~/artisight-htv-sys-new/kutaisi-public/server/src/*` | Бэкенд инсталляции в Кутаиси: очередь, CCS, TouchDesigner | 2026-07-30 |
-| tv-tower-ui | `~/tv-tower-ui/src` | Фронт телебашни (геолокация, state) | — |
-| kutaisi-public (фронт) | `~/artisight-htv-sys-new/kutaisi-public/src` | Фронт Кутаиси (геолокация, touch) | — |
+| Проект                 | Путь                                                  | Назначение                                                | Последний коммит |
+| ---------------------- | ----------------------------------------------------- | --------------------------------------------------------- | ---------------- |
+| tv-tower-back          | `~/tv-tower-back` (`src/service/*`)                   | Бэкенд телебашни Ереван: оплата, очередь анимаций, CCS    | 2026-10-07       |
+| kutaisi-public         | `~/artisight-htv-sys-new/kutaisi-public/server/src/*` | Бэкенд инсталляции в Кутаиси: очередь, CCS, TouchDesigner | 2026-07-30       |
+| tv-tower-ui            | `~/tv-tower-ui/src`                                   | Фронт телебашни (геолокация, state)                       | —                |
+| kutaisi-public (фронт) | `~/artisight-htv-sys-new/kutaisi-public/src`          | Фронт Кутаиси (геолокация, touch)                         | —                |
 
 Генеалогия: `state.ts`, `cloud-client.ts`, `geo-position-service.ts` и
 `async-queue.ts` написаны в tv-tower-back (окт 2025 – дек 2025) и
@@ -27,44 +27,44 @@
 
 ### 1.1 CCS-клиент (ExpoLight Cloud Control System, `admin.expolightcontrols.net`)
 
-| Аспект | tv-tower-back | kutaisi-public | Унифицировано |
-|---|---|---|---|
-| Учётные данные | в коде `application.ts` (`cloudCreds`) | в коде класса (`login`, `password`, `project` захардкожены) | только через env `CCS_LOGIN`, `CCS_PASSWORD`, `CCS_PROJECT` |
-| HTTP | axios | axios | встроенный `fetch` (Node 20+), без зависимости |
-| Логин | `POST /api/user/projects` → первый проект → `POST /api/user/app/auth` | то же | то же, но проект берётся из env, список проектов запрашивается только если `CCS_PROJECT` пуст |
-| Сокет | `socket.io-client` на `/users`, `path: /socket`, websocket only, бесконечный reconnect 1–5 с | то же | то же |
-| Подписка на state | `joinRoom` + `programStateChange` → событие `stateChange` | то же | то же, но слушатель `programStateChange` регистрируется один раз, а не на каждом `connect` |
-| `reconnect` | слушается на `socket` — в socket.io v4 это событие **Manager**, на сокете не срабатывает (мёртвый код) | то же | `socket.io.on('reconnect')` |
-| Истечение токена | в `connect_error` вызывается `await this.connect()` — создаётся **второй сокет**, старый продолжает реконнектиться; ошибка логина даёт unhandled rejection | то же | `connect_error` → один повторный логин с экспоненциальным backoff → обновление `socket.auth.token`, сокет тот же |
-| Dry-run | `EXEC_COMMANDS_ENABLED=false` внутри `execCommand` | нет | опция `execEnabled` (`CCS_MODE=dry-run`) |
-| Dev-режим | `CloudClientDev` при `NODE_ENV !== production` — всё равно ходит в сеть | `CloudClientDev` при `NODE_ENV === development` — та же логика, **противоположное условие** | `CCS_MODE=live \| dry-run \| offline`; `offline` = `FakeCloudClient` без сети с тем же интерфейсом `CloudGateway` |
-| Останов | `disconnect()` снимает один слушатель | то же | `close()` снимает все слушатели сокета и менеджера |
+| Аспект            | tv-tower-back                                                                                                                                              | kutaisi-public                                                                              | Унифицировано                                                                                                                                                                                                                                                                                                          |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Учётные данные    | в коде `application.ts` (`cloudCreds`)                                                                                                                     | в коде класса (`login`, `password`, `project` захардкожены)                                 | учётка через env `CCS_LOGIN`, `CCS_PASSWORD`; id проекта — константа `CCS_PROJECT_ID` (`apps/server/src/ccs-ids.ts`) |
+| HTTP              | axios                                                                                                                                                      | axios                                                                                       | встроенный `fetch` (Node 20+), без зависимости                                                                                                                                                                                                                                                                         |
+| Логин             | `POST /api/user/projects` → первый проект → `POST /api/user/app/auth`                                                                                      | то же                                                                                       | то же, но проект — константа `CCS_PROJECT_ID`, сверяется со списком `/api/user/projects`: пустой список или чужой `projectUID` → `CloudProjectError` без повторов логина                                                                                                                                |
+| Сокет             | `socket.io-client` на `/users`, `path: /socket`, websocket only, бесконечный reconnect 1–5 с                                                               | то же                                                                                       | то же                                                                                                                                                                                                                                                                                                                  |
+| Подписка на state | `joinRoom` + `programStateChange` → событие `stateChange`                                                                                                  | то же                                                                                       | то же, но слушатель `programStateChange` регистрируется один раз, а не на каждом `connect`                                                                                                                                                                                                                             |
+| `reconnect`       | слушается на `socket` — в socket.io v4 это событие **Manager**, на сокете не срабатывает (мёртвый код)                                                     | то же                                                                                       | `socket.io.on('reconnect')`                                                                                                                                                                                                                                                                                            |
+| Истечение токена  | в `connect_error` вызывается `await this.connect()` — создаётся **второй сокет**, старый продолжает реконнектиться; ошибка логина даёт unhandled rejection | то же                                                                                       | `connect_error` (только при `socket.active === false`, т.е. отказ middleware) → один повторный логин с экспоненциальным backoff → обновление `socket.auth.token` + `socket.connect()`, сокет тот же. То же после `io server disconnect`: socket.io сам после него не переподключается (найдено тестом в `apps/server`) |
+| Dry-run           | `EXEC_COMMANDS_ENABLED=false` внутри `execCommand`                                                                                                         | нет                                                                                         | опция `execEnabled` (`CCS_MODE=dry-run`)                                                                                                                                                                                                                                                                               |
+| Dev-режим         | `CloudClientDev` при `NODE_ENV !== production` — всё равно ходит в сеть                                                                                    | `CloudClientDev` при `NODE_ENV === development` — та же логика, **противоположное условие** | `CCS_MODE=live \| dry-run \| offline`; `offline` = `FakeCloudClient` без сети с тем же интерфейсом `CloudGateway`                                                                                                                                                                                                      |
+| Останов           | `disconnect()` снимает один слушатель                                                                                                                      | то же                                                                                       | `close()` снимает все слушатели сокета и менеджера                                                                                                                                                                                                                                                                     |
 
 ### 1.2 Состояние приложения (`State`)
 
-| Аспект | tv-tower-back | kutaisi-public | Унифицировано |
-|---|---|---|---|
-| Флаги | `techPause`, `interactive`, `show`, `payment`, `locationRestriction` | `techPause`, `interactive`, `pause`, `locationRestriction` | generic `AppState<F>`; для ZAG `F = techPause \| interactive \| locationRestriction \| schedule` |
-| ID программ CCS | константы в коде | константы в коде | env `CCS_PROGRAM_*` + `CCS_STATE_GROUP` |
-| Маппинг program → flag | дублирован в `syncProjectState` и в `switch` обработчика | то же | один `apply(changes)` для начальной синхронизации и live-событий |
-| Чужое состояние | State пишет напрямую в `geoService.isEnable` и `paymentService.isEnable` | то же для geo | State ничего не мутирует; потребители читают `state.get('locationRestriction')` |
-| Событие `change` | при любом событии CCS, даже без изменения | то же | только если значение изменилось, с перечнем изменённых флагов; отдельное `synced` после первой загрузки |
-| Dev-значения | подкласс `DevState` с захардкоженным `getStates()` | подкласс `StateDev` | env `STATE_OVERRIDES=interactive=true,locationRestriction=false` |
-| До первой синхронизации | флаги `false`, т.е. интерактив «выключен» | то же | `initial` из конфига: в `live` — безопасные (`techPause=true`), в `offline` — рабочие |
-| Запись в CCS | `runAppStateCommand` в Application (`params: [+value]`) | нет | `state.reference(projectUID, flag, value)` + `cloud.execCommand` |
+| Аспект                  | tv-tower-back                                                            | kutaisi-public                                             | Унифицировано                                                                                           |
+| ----------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Флаги                   | `techPause`, `interactive`, `show`, `payment`, `locationRestriction`     | `techPause`, `interactive`, `pause`, `locationRestriction` | generic `AppState<F>`; для ZAG `F = techPause \| interactive \| locationRestriction \| schedule`        |
+| ID программ CCS         | константы в коде                                                         | константы в коде                                           | env `CCS_PROGRAM_*` + `CCS_STATE_GROUP`                                                                 |
+| Маппинг program → flag  | дублирован в `syncProjectState` и в `switch` обработчика                 | то же                                                      | один `apply(changes)` для начальной синхронизации и live-событий                                        |
+| Чужое состояние         | State пишет напрямую в `geoService.isEnable` и `paymentService.isEnable` | то же для geo                                              | State ничего не мутирует; потребители читают `state.get('locationRestriction')`                         |
+| Событие `change`        | при любом событии CCS, даже без изменения                                | то же                                                      | только если значение изменилось, с перечнем изменённых флагов; отдельное `synced` после первой загрузки |
+| Dev-значения            | подкласс `DevState` с захардкоженным `getStates()`                       | подкласс `StateDev`                                        | env `STATE_OVERRIDES=interactive=true,locationRestriction=false`                                        |
+| До первой синхронизации | флаги `false`, т.е. интерактив «выключен»                                | то же                                                      | `initial` из конфига: в `live` — безопасные (`techPause=true`), в `offline` — рабочие                   |
+| Запись в CCS            | `runAppStateCommand` в Application (`params: [+value]`)                  | нет                                                        | `state.reference(projectUID, flag, value)` + `cloud.execCommand`                                        |
 
 ### 1.3 Геопозиция
 
-| Аспект | tv-tower-back | kutaisi-public | Унифицировано |
-|---|---|---|---|
-| Расчёт | библиотека `geopoint` + `// @ts-ignore` | то же | формула гаверсинуса (10 строк), без зависимости; расхождение с `geopoint` < 0.3 % |
-| Радиус | 50 м | 100 м | env `GEO_RADIUS_M` (по умолчанию 100) |
-| Центр | **захардкожен** в `setAllowLocation` (координаты из логина CCS игнорируются) | из логина CCS | из логина CCS, env `GEO_CENTER=lat,lng` переопределяет и блокирует |
-| Точность GPS | клиент Кутаиси отправляет `accuracy`, сервер игнорирует | — | `accuracy` даёт допуск, ограниченный `GEO_ACCURACY_TOLERANCE_M` (30 м) |
-| Центр не задан | `distanceTo(undefined)` → TypeError | то же | ответ `{ allowed: false, reason: 'no-center' }` |
-| Ответ | `boolean` | `boolean` | `{ allowed, distanceM, reason }` — клиент может показать расстояние |
-| Протокол | `geo` с ack `{ success }` | `checkGeoposition` → два события `goodPosition` / `badPosition` | `geo:check` с ack |
-| Клиент | `watchPosition`, `enableHighAccuracy: true`, только когда `locationRestriction` включён | `getCurrentPosition` каждые 5 с, `enableHighAccuracy: false`, всегда | как tv-tower-ui (см. §6) |
+| Аспект         | tv-tower-back                                                                           | kutaisi-public                                                       | Унифицировано                                                                     |
+| -------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Расчёт         | библиотека `geopoint` + `// @ts-ignore`                                                 | то же                                                                | формула гаверсинуса (10 строк), без зависимости; расхождение с `geopoint` < 0.3 % |
+| Радиус         | 50 м                                                                                    | 100 м                                                                | env `GEO_RADIUS_M` (по умолчанию 100)                                             |
+| Центр          | **захардкожен** в `setAllowLocation` (координаты из логина CCS игнорируются)            | из логина CCS                                                        | из логина CCS, env `GEO_CENTER=lat,lng` переопределяет и блокирует                |
+| Точность GPS   | клиент Кутаиси отправляет `accuracy`, сервер игнорирует                                 | —                                                                    | `accuracy` даёт допуск, ограниченный `GEO_ACCURACY_TOLERANCE_M` (30 м)            |
+| Центр не задан | `distanceTo(undefined)` → TypeError                                                     | то же                                                                | ответ `{ allowed: false, reason: 'no-center' }`                                   |
+| Ответ          | `boolean`                                                                               | `boolean`                                                            | `{ allowed, distanceM, reason }` — клиент может показать расстояние               |
+| Протокол       | `geo` с ack `{ success }`                                                               | `checkGeoposition` → два события `goodPosition` / `badPosition`      | `geo:check` с ack                                                                 |
+| Клиент         | `watchPosition`, `enableHighAccuracy: true`, только когда `locationRestriction` включён | `getCurrentPosition` каждые 5 с, `enableHighAccuracy: false`, всегда | как tv-tower-ui (см. §6)                                                          |
 
 ### 1.4 Клиент TouchDesigner
 
@@ -72,24 +72,24 @@
 URL `EXTERNAL_WS_URL`, по умолчанию `ws://10.11.113.101:85`). tv-tower
 управляет железом только через CCS. Для ZAG клиент нужен (смета A3).
 
-| Аспект | kutaisi-public | Унифицировано |
-|---|---|---|
-| API | колбэки в опциях | `EventEmitter` (`open`, `close`, `message`), как у CCS-клиента |
-| Reconnect | фиксированный 1 с | экспоненциальный 1 → 10 с, сброс при успешном `open` |
-| Ping | `ping()` каждые 30 с, pong не проверяется | если pong не пришёл до следующего ping — `terminate()` и reconnect |
-| Отправка | один `send()`; при разрыве сообщение теряется, лог на каждое сообщение | `stream()` для точек касания (при разрыве отбрасывается, счётчик `droppedCount`), `command()` для управляющих сообщений (буфер до 32, досылается после реконнекта); логов на сообщение нет |
-| Формат | плоский JSON `{ type, ... , timestamp }` | тот же стиль, `timestamp` добавляется только командам (§5) |
+| Аспект    | kutaisi-public                                                         | Унифицировано                                                                                                                                                                              |
+| --------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| API       | колбэки в опциях                                                       | `EventEmitter` (`open`, `close`, `message`), как у CCS-клиента                                                                                                                             |
+| Reconnect | фиксированный 1 с                                                      | экспоненциальный 1 → 10 с, сброс при успешном `open`                                                                                                                                       |
+| Ping      | `ping()` каждые 30 с, pong не проверяется                              | если pong не пришёл до следующего ping — `terminate()` и reconnect                                                                                                                         |
+| Отправка  | один `send()`; при разрыве сообщение теряется, лог на каждое сообщение | `stream()` для точек касания (при разрыве отбрасывается, счётчик `droppedCount`), `command()` для управляющих сообщений (буфер до 32, досылается после реконнекта); логов на сообщение нет |
+| Формат    | плоский JSON `{ type, ... , timestamp }`                               | тот же стиль, `timestamp` добавляется только командам (§5)                                                                                                                                 |
 
 ### 1.5 Очередь сеансов (`AsyncQueue`)
 
-| Аспект | tv-tower-back | kutaisi-public | Унифицировано |
-|---|---|---|---|
-| Пауза между пользователями | фейковая задача `Fade` 5 с без `user` | фейковая задача `fade` 15 с | опция `gapMs`, фейковых задач нет; TD получает `session:end` и `drain` |
-| Удаление при дисконнекте | `splice(index-1, 2)` — удаляет **соседнюю** задачу, если `Fade` не стоит перед ней (index 0 → `splice(-1, 2)`) | фильтр по `user.id` | `remove(userId)`: ждущих — фильтром, текущего — `skipCurrent()` |
-| Прерывание текущего | нет | через внешние переменные `currentInteractiveNext` в `index.ts` | `skipCurrent()` внутри очереди |
-| Время ожидания | сумма `duration` впереди + остаток текущей | то же + `currentTaskFinishAfter()` | `placeOf(index)` с учётом `gapMs`; событие `update` для всех ждущих |
-| Кратковременный разрыв связи | место теряется сразу | то же | grace-период `DISCONNECT_GRACE_MS` (10 с) в socket-слое |
-| Порядок событий | синхронно внутри `add()` | то же | `start`/`finish`/`update`/`drain` через `queueMicrotask`, чтобы ack на запрос уходил раньше push-событий |
+| Аспект                       | tv-tower-back                                                                                                  | kutaisi-public                                                 | Унифицировано                                                                                            |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Пауза между пользователями   | фейковая задача `Fade` 5 с без `user`                                                                          | фейковая задача `fade` 15 с                                    | опция `gapMs`, фейковых задач нет; TD получает `session:end` и `drain`                                   |
+| Удаление при дисконнекте     | `splice(index-1, 2)` — удаляет **соседнюю** задачу, если `Fade` не стоит перед ней (index 0 → `splice(-1, 2)`) | фильтр по `user.id`                                            | `remove(userId)`: ждущих — фильтром, текущего — `skipCurrent()`                                          |
+| Прерывание текущего          | нет                                                                                                            | через внешние переменные `currentInteractiveNext` в `index.ts` | `skipCurrent()` внутри очереди                                                                           |
+| Время ожидания               | сумма `duration` впереди + остаток текущей                                                                     | то же + `currentTaskFinishAfter()`                             | `placeOf(index)` с учётом `gapMs`; событие `update` для всех ждущих                                      |
+| Кратковременный разрыв связи | место теряется сразу                                                                                           | то же                                                          | grace-период `DISCONNECT_GRACE_MS` (10 с) в socket-слое                                                  |
+| Порядок событий              | синхронно внутри `add()`                                                                                       | то же                                                          | `start`/`finish`/`update`/`drain` через `queueMicrotask`, чтобы ack на запрос уходил раньше push-событий |
 
 ---
 
@@ -121,18 +121,18 @@ URL `EXTERNAL_WS_URL`, по умолчанию `ws://10.11.113.101:85`). tv-towe
 
 ## 3. Состав `reference/`
 
-| Файл | Экспорт | Роль |
-|---|---|---|
-| `cloud-client.ts` | `CloudGateway`, `CloudClient`, `FakeCloudClient`, типы CCS | Логин, сокет, `getPrograms`, `execCommand`, события `login` / `connect` / `disconnect` / `reconnect` / `stateChange` |
-| `app-state.ts` | `AppState<F>` | Флаги приложения ↔ программы CCS; `bind(cloud)`, `sync(groups)`, `apply`, `reference` |
-| `geo-fence.ts` | `GeoFence`, `haversineDistanceM` | Проверка расстояния до центра |
-| `touch-designer-client.ts` | `TouchDesignerClient` | WebSocket к TouchDesigner |
-| `session-queue.ts` | `SessionQueue<T>`, `QueueError` | Однополосная очередь сеансов |
-| `config.ts` | `loadConfig`, `ZagFlag`, `BackendConfig` | Разбор env, валидация |
-| `application.ts` | `Application`, `resolveScreen`, `AppError` | Композиционный корень: связывает всё выше, доменные методы |
-| `socket-api.ts` | `attachSocketApi` | Обработчики Socket.IO (§4) |
-| `bootstrap.ts` | — | Точка входа: http + io + graceful shutdown |
-| `selftest.js` | — | Сценарные проверки (§9) |
+| Файл                       | Экспорт                                                    | Роль                                                                                                                 |
+| -------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `cloud-client.ts`          | `CloudGateway`, `CloudClient`, `FakeCloudClient`, типы CCS | Логин, сокет, `getPrograms`, `execCommand`, события `login` / `connect` / `disconnect` / `reconnect` / `stateChange` |
+| `app-state.ts`             | `AppState<F>`                                              | Флаги приложения ↔ программы CCS; `bind(cloud)`, `sync(groups)`, `apply`, `reference`                                |
+| `geo-fence.ts`             | `GeoFence`, `haversineDistanceM`                           | Проверка расстояния до центра                                                                                        |
+| `touch-designer-client.ts` | `TouchDesignerClient`                                      | WebSocket к TouchDesigner                                                                                            |
+| `session-queue.ts`         | `SessionQueue<T>`, `QueueError`                            | Однополосная очередь сеансов                                                                                         |
+| `config.ts`                | `loadConfig`, `ZagFlag`, `BackendConfig`                   | Разбор env, валидация                                                                                                |
+| `application.ts`           | `Application`, `resolveScreen`, `AppError`                 | Композиционный корень: связывает всё выше, доменные методы                                                           |
+| `socket-api.ts`            | `attachSocketApi`                                          | Обработчики Socket.IO (§4)                                                                                           |
+| `bootstrap.ts`             | —                                                          | Точка входа: http + io + graceful shutdown                                                                           |
+| `selftest.js`              | —                                                          | Сценарные проверки (§9)                                                                                              |
 
 Схема связей:
 
@@ -146,12 +146,12 @@ CCS ──socket.io──▶ CloudClient ──stateChange──▶ AppState ─
 `Application.publicState` = `{ flags, screen, synced }`, где `screen`
 вычисляется из флагов (`resolveScreen`):
 
-| Условие | `screen` | Экран из Figma |
-|---|---|---|
-| `techPause` | `maintenance` | «Технические работы» (дизайна нет) |
-| `!interactive` | `disabled` | «Интерактив выключен» |
-| `schedule` | `schedule` | 12 — график 18:00–22:00 (`45:3600`) |
-| иначе | `interactive` | рабочий сценарий |
+| Условие        | `screen`      | Экран из Figma                      |
+| -------------- | ------------- | ----------------------------------- |
+| `techPause`    | `maintenance` | «Технические работы» (дизайна нет)  |
+| `!interactive` | `disabled`    | «Интерактив выключен»               |
+| `schedule`     | `schedule`    | 12 — график 18:00–22:00 (`45:3600`) |
+| иначе          | `interactive` | рабочий сценарий                    |
 
 Семантика `schedule` (флаг CCS «неправильное время») уточнить у Expolight:
 если расписание считает CCS — флаг достаточен; если нет, добавить
@@ -166,17 +166,17 @@ CCS ──socket.io──▶ CloudClient ──stateChange──▶ AppState ─
 (как в Кутаиси, 8–64 символа). Невалидный `userId` → `connect_error`
 с сообщением `EAUTH`.
 
-| Направление | Событие | Данные | Ответ (ack) |
-|---|---|---|---|
-| S→C при подключении и при изменении | `state:update` | `PublicState` | — |
-| C→S | `state:get` | — | `PublicState` |
-| C→S | `geo:check` | `{ latitude, longitude, accuracy? }` | `{ allowed, distanceM, reason }`; `reason`: `ok` / `too-far` / `no-center` / `invalid` / `disabled` |
-| C→S | `session:request` | `{ mode: 'comet' \| 'milky-way' \| 'palette', params }` | `{ success: true, sessionId, waitMs, position, durationMs }` или `{ success: false, code }`; `code`: `ENOTALLOWED` (экран не `interactive`), `EBADMODE`, `EQUEUED`, `EINTERNAL` |
-| C→S | `session:cancel` | — | `{ success: true, removed }` |
-| S→C | `queue:update` | `{ waitMs, position }` | — |
-| S→C | `session:start` | `{ sessionId, mode, durationMs, endsAt }` | — |
-| S→C | `session:end` | `{ reason: 'completed' \| 'skipped' }` | — |
-| C→S | `touch:event` | `{ x, y, touch: 0\|1, swipe: 0\|1, direction }`, `x`/`y` ∈ [0, 1] | — |
+| Направление                         | Событие           | Данные                                                            | Ответ (ack)                                                                                                                                                                     |
+| ----------------------------------- | ----------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S→C при подключении и при изменении | `state:update`    | `PublicState`                                                     | —                                                                                                                                                                               |
+| C→S                                 | `state:get`       | —                                                                 | `PublicState`                                                                                                                                                                   |
+| C→S                                 | `geo:check`       | `{ latitude, longitude, accuracy? }`                              | `{ allowed, distanceM, reason }`; `reason`: `ok` / `too-far` / `no-center` / `invalid` / `disabled`                                                                             |
+| C→S                                 | `session:request` | `{ mode: 'comet' \| 'milky-way' \| 'palette', params }`           | `{ success: true, sessionId, waitMs, position, durationMs }` или `{ success: false, code }`; `code`: `ENOTALLOWED` (экран не `interactive`), `EBADMODE`, `EQUEUED`, `EINTERNAL` |
+| C→S                                 | `session:cancel`  | —                                                                 | `{ success: true, removed }`                                                                                                                                                    |
+| S→C                                 | `queue:update`    | `{ waitMs, position }`                                            | —                                                                                                                                                                               |
+| S→C                                 | `session:start`   | `{ sessionId, mode, durationMs, endsAt }`                         | —                                                                                                                                                                               |
+| S→C                                 | `session:end`     | `{ reason: 'completed' \| 'skipped' }`                            | —                                                                                                                                                                               |
+| C→S                                 | `touch:event`     | `{ x, y, touch: 0\|1, swipe: 0\|1, direction }`, `x`/`y` ∈ [0, 1] | —                                                                                                                                                                               |
 
 Правила:
 
@@ -201,8 +201,15 @@ CCS ──socket.io──▶ CloudClient ──stateChange──▶ AppState ─
 Поток (`stream`, без буфера):
 
 ```json
-{ "type": "touch:event", "sessionId": "…", "x": 0.4213, "y": 0.7712,
-  "touch": 1, "swipe": 0, "direction": "none" }
+{
+  "type": "touch:event",
+  "sessionId": "…",
+  "x": 0.4213,
+  "y": 0.7712,
+  "touch": 1,
+  "swipe": 0,
+  "direction": "none"
+}
 ```
 
 Команды (`command`, буферизуются до реконнекта, получают `timestamp` ISO):
@@ -231,7 +238,7 @@ CCS ──socket.io──▶ CloudClient ──stateChange──▶ AppState ─
   подключение только на экранах, где нужен сервер (Home и Mission без
   сокета — как в Кутаиси `App.jsx`).
 - Геолокация: `navigator.geolocation.watchPosition(…, { enableHighAccuracy:
-  true })` запускается только когда `flags.locationRestriction === true`;
+true })` запускается только когда `flags.locationRestriction === true`;
   каждая позиция уходит в `geo:check` с ack; `clearWatch` при размонтировании
   и при выключении флага. Ошибка с `code === 1` (запрет) → экран «вне зоны»
   с подсказкой включить геолокацию. Не опрашивать `getCurrentPosition`
@@ -269,30 +276,30 @@ Socket.IO + `/health`), он не раздаёт статику.
 
 ## 7. Переменные окружения
 
-| Переменная | Назначение | По умолчанию |
-|---|---|---|
-| `PORT` | порт http/socket.io | `8080` |
-| `ALLOWED_ORIGINS` | CORS, через запятую | пусто |
-| `CCS_MODE` | `live` / `dry-run` (читает состояние, не шлёт команды) / `offline` (без сети) | `live` |
-| `CCS_URL` | адрес CCS | `https://admin.expolightcontrols.net` |
-| `CCS_LOGIN`, `CCS_PASSWORD` | учётка приложения в CCS (обязательны вне `offline`) | — |
-| `CCS_PROJECT` | `projectUID`; если пуст — первый проект учётки | — |
-| `CCS_STATE_GROUP` | `_id` группы программ «состояние приложения» | — |
-| `CCS_PROGRAM_TECH_PAUSE`, `CCS_PROGRAM_INTERACTIVE`, `CCS_PROGRAM_LOCATION_RESTRICTION`, `CCS_PROGRAM_SCHEDULE` | `_id` программ-флагов | в `offline` — `offline:<flag>` |
-| `STATE_OVERRIDES` | принудительные флаги, `interactive=true,schedule=false` | — |
-| `GEO_RADIUS_M` | радиус зоны | `100` |
-| `GEO_ACCURACY_TOLERANCE_M` | максимум допуска по точности GPS | `30` |
-| `GEO_CENTER` | `lat,lng`; переопределяет координаты из CCS | из логина CCS |
-| `TD_WS_URL` | адрес TouchDesigner; пусто — TD отключён | — |
-| `TD_PING_INTERVAL_MS` | интервал ping | `30000` |
-| `SESSION_MS` | длительность сеанса | `40000` |
-| `SESSION_GAP_MS` | пауза между сеансами | `5000` |
-| `DISCONNECT_GRACE_MS` | удержание места при разрыве | `10000` |
+| Переменная                                                                                                      | Назначение                                                                    | По умолчанию                                                            |
+| --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `PORT`                                                                                                          | порт http/socket.io                                                           | `8080`                                                                  |
+| `ALLOWED_ORIGINS`                                                                                               | CORS, через запятую                                                           | пусто                                                                   |
+| `CCS_MODE`                                                                                                      | `live` / `dry-run` (читает состояние, не шлёт команды) / `offline` (без сети) | `live`                                                                  |
+| `CCS_URL`                                                                                                       | адрес CCS                                                                     | `https://admin.expolightcontrols.net`                                   |
+| `CCS_LOGIN`, `CCS_PASSWORD`                                                                                     | учётка приложения в CCS (обязательны вне `offline`)                           | —                                                                       |
+| `CCS_STATE_GROUP`                                                                                               | `_id` группы программ «состояние приложения»                                  | `6aef145253257f190d66c47b` из `ccs-ids.ts` ([`ccs-ids.md`](ccs-ids.md)) |
+| `CCS_PROGRAM_TECH_PAUSE`, `CCS_PROGRAM_INTERACTIVE`, `CCS_PROGRAM_LOCATION_RESTRICTION`, `CCS_PROGRAM_SCHEDULE` | `_id` программ-флагов                                                         | константы ZAG из `ccs-ids.ts`; в `offline` — `offline:<flag>`           |
+| `STATE_OVERRIDES`                                                                                               | принудительные флаги, `interactive=true,schedule=false`                       | —                                                                       |
+| `GEO_RADIUS_M`                                                                                                  | радиус зоны                                                                   | `100`                                                                   |
+| `GEO_ACCURACY_TOLERANCE_M`                                                                                      | максимум допуска по точности GPS                                              | `30`                                                                    |
+| `GEO_CENTER`                                                                                                    | `lat,lng`; переопределяет координаты из CCS                                   | из логина CCS                                                           |
+| `TD_WS_URL`                                                                                                     | адрес TouchDesigner; пусто — TD отключён                                      | —                                                                       |
+| `TD_PING_INTERVAL_MS`                                                                                           | интервал ping                                                                 | `30000`                                                                 |
+| `SESSION_MS`                                                                                                    | длительность сеанса                                                           | `40000`                                                                 |
+| `SESSION_GAP_MS`                                                                                                | пауза между сеансами                                                          | `5000`                                                                  |
+| `DISCONNECT_GRACE_MS`                                                                                           | удержание места при разрыве                                                   | `10000`                                                                 |
 
-Для ZAG нужно получить у Expolight: учётку CCS, `projectUID`, `_id` группы
-и четырёх программ. В kutaisi/tv-tower эти значения смотрели через
-`cloudClient.getPrograms()` после логина — тот же способ работает в
-`dry-run`.
+Значения ZAG собраны в [`ccs-ids.md`](ccs-ids.md) и `apps/server/src/ccs-ids.ts`;
+ничего из env задавать не нужно. В kutaisi/tv-tower эти значения смотрели через
+`cloudClient.getPrograms()` после логина; для ZAG это делает
+`npm run ccs:probe -w @zag/server` (читает `CCS_*` из корневого `.env`,
+всегда в `dry-run`, печатает `_id` групп и программ).
 
 ---
 
@@ -332,6 +339,25 @@ Socket.IO + `/health`), он не раздаёт статику.
   пользователей, маршрутизация `touch:event`, grace при реконнекте,
   `techPause` из CCS → `maintenance` + `session:end`, `ENOTALLOWED`,
   удаление по истечении grace.
+
+`apps/server/src/app-state.test.ts` (node:test): initial до sync, sync с
+чужой группой (warn), sync с пропуском чужих и stateless (`state: null`)
+программ, overrides, дедупликация `change`, `reference`, `bind` к
+`FakeCloudClient`, таблица `ZagAppState.resolveScreen`. В `apps/server`
+код в OOP-стиле (см. `AGENTS.md`): `ZagAppState` (= `AppState<ZagFlag>` +
+`publicState` + `static resolveScreen`), `CloudGatewayFactory.create`,
+`ConfigLoader.load`, `StructuredLogger`, `HealthHttpServer.create`,
+`ZagSocketServer`, композиционный корень `Application` в `bootstrap.ts`: sync после `connect` и `reconnect`,
+`state:update` всем сокетам на `synced`/`change`, `state:update` при
+подключении и `state:get`, `state` в `/health`. Конфиг состояния лежит в
+`config.state` (`groupID`, `programs`, `initial`, `overrides`), а не в
+`cloud`, как в референсе.
+
+`apps/server/src/cloud-client.test.ts` (node:test, фейковый CCS на
+`node:http` + `socket.io`): логин с выбором проекта, backoff, `joinRoom`,
+`getPrograms` / `runProgram`, dry-run, `programStateChange`, повторный
+логин после `io server disconnect` и после отказа middleware по
+устаревшему токену, `close()`.
 
 Не проверено: живой CCS (нет учётки ZAG), живой TouchDesigner.
 
