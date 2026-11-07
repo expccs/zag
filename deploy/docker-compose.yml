@@ -1,8 +1,10 @@
-# Lives on the host at /srv/zag/docker-compose.yml (docs/monorepo.md § 6).
+# Used from the repo checkout by deploy.yml on the self-hosted runner:
+#   docker compose -f deploy/docker-compose.yml up -d server
 # The only runtime process: Socket.IO + /health. nginx runs on the host.
+name: zag
 services:
   server:
-    image: ghcr.io/expccs/zag-server:${SERVER_TAG:-latest}
+    image: zag-server:${SERVER_TAG:-latest} # built locally by deploy.yml
     env_file: /srv/zag/.env
     ports:
       - '127.0.0.1:8080:8080' # reachable only by host nginx

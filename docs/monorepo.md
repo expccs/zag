@@ -183,18 +183,23 @@ EXPOSE 8080
 CMD ["node", "dist/bootstrap.js"]
 ```
 
-Образ публикуется в `ghcr.io/expccs/zag-server:<sha>` и `:latest`.
+Образ собирается **на хосте** self-hosted раннером (`docker build` из
+чекаута) и тегается `zag-server:<sha>` и `zag-server:latest`; registry нет.
+После успешного старта старые теги `zag-server:*` и висячие слои
+удаляются (`docker rmi`, `docker image prune -f`).
 
 ## 6. Хост
 
 nginx установлен на хосте (не в Docker). В Docker — только `server`.
 
-`/srv/zag/docker-compose.yml`:
+`deploy/docker-compose.yml` (используется из чекаута раннера, на хост
+не копируется; на хосте лежит только `/srv/zag/.env`):
 
 ```yaml
+name: zag
 services:
   server:
-    image: ghcr.io/expccs/zag-server:${SERVER_TAG:-latest}
+    image: zag-server:${SERVER_TAG:-latest}   # собран локально deploy.yml
     env_file: /srv/zag/.env
     ports: ["127.0.0.1:8080:8080"]   # доступен только nginx
     restart: unless-stopped
@@ -232,10 +237,10 @@ location = /health { proxy_pass http://127.0.0.1:8080; }
 Старые релизы чистятся до последних 5. `ALLOWED_ORIGINS` сервера =
 origin сайта.
 
-Разовая настройка хоста: `mkdir -p /srv/zag/releases`, пользователь
-`deploy` с правом писать в `/srv/zag` и запускать `docker compose` в
-`/srv/zag`, SSH-ключ деплоя в GitHub Secrets, `docker login ghcr.io` от
-`deploy`.
+Разовая настройка хоста (`deploy/README.md`): `mkdir -p /srv/zag/releases`,
+пользователь `deploy` в группе `docker` с правом писать в `/srv/zag`,
+`/srv/zag/.env`, и **self-hosted GitHub Actions runner** с меткой `zag`,
+установленный как systemd-сервис от `deploy`. SSH-ключи и registry не нужны.
 
 ## 7. CI/CD: деплоим только то, что изменилось
 
@@ -302,10 +307,11 @@ jobs:
           echo web=$(grep -qx '@zag/web' <<<"$PKGS" && echo true || echo false) >> "$GITHUB_OUTPUT"
           echo server=$(grep -qx '@zag/server' <<<"$PKGS" && echo true || echo false) >> "$GITHUB_OUTPUT"
 
+  # оба job — на self-hosted runner, установленном на хосте ZAG
   deploy-web:
     needs: detect
     if: needs.detect.outputs.web == 'true'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, zag]
     environment: production
     steps:
       - uses: actions/checkout@v4
@@ -316,42 +322,30 @@ jobs:
         env:
           VITE_SOCKET_URL: ${{ vars.VITE_SOCKET_URL }}
           VITE_APP_VERSION: ${{ github.sha }}
-      - uses: webfactory/ssh-agent@v0.9.0
-        with: { ssh-private-key: "${{ secrets.DEPLOY_SSH_KEY }}" }
       - run: |
-          H="${{ vars.DEPLOY_HOST }}"; R="/srv/zag/releases/${{ github.sha }}"
-          ssh "deploy@$H" "mkdir -p $R"
-          rsync -az --delete --chmod=D755,F644 apps/web/dist/ "deploy@$H:$R/"
+          R="/srv/zag/releases/${{ github.sha }}"; mkdir -p "$R"
+          rsync -a --delete apps/web/dist/ "$R/" && chmod -R u=rwX,go=rX "$R"
           # /srv/zag/ui — симлинк; если на хосте лежит обычный каталог, он
           # сначала убирается в releases/manual-<ts>
-          ssh "deploy@$H" "ln -sfn $R /srv/zag/ui.tmp && mv -Tf /srv/zag/ui.tmp /srv/zag/ui \
-            && ls -dt /srv/zag/releases/* | grep -vx $R | tail -n +5 | xargs -r rm -rf"
+          ln -sfn "$R" /srv/zag/ui.tmp && mv -Tf /srv/zag/ui.tmp /srv/zag/ui
+          ls -dt /srv/zag/releases/* | grep -vx "$R" | tail -n +5 | xargs -r rm -rf
 
   deploy-server:
     needs: detect
     if: needs.detect.outputs.server == 'true'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, zag]
     environment: production
-    permissions: { contents: read, packages: write }
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/login-action@v3
-        with: { registry: ghcr.io, username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}" }
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: apps/server/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/expccs/zag-server:${{ github.sha }}
-            ghcr.io/expccs/zag-server:latest
-      - uses: webfactory/ssh-agent@v0.9.0
-        with: { ssh-private-key: "${{ secrets.DEPLOY_SSH_KEY }}" }
+      - run: docker build -f apps/server/Dockerfile --build-arg APP_VERSION=${{ github.sha }} \
+               -t zag-server:${{ github.sha }} -t zag-server:latest .
       - run: |
-          ssh "deploy@${{ vars.DEPLOY_HOST }}" \
-            "cd /srv/zag && SERVER_TAG=${{ github.sha }} docker compose pull server \
-             && SERVER_TAG=${{ github.sha }} docker compose up -d server \
-             && curl -fsS localhost:8080/health"
+          SERVER_TAG=${{ github.sha }} docker compose -f deploy/docker-compose.yml up -d server
+          curl -fsS --retry 15 --retry-delay 2 --retry-all-errors localhost:8080/health
+      - run: |   # чистим старые образы: остаются текущий тег и :latest
+          docker images zag-server --format '{{.Tag}}' \
+            | grep -vx -e ${{ github.sha }} -e latest | xargs -r -I{} docker rmi zag-server:{}
+          docker image prune -f
 ```
 
 Поведение:
@@ -367,7 +361,8 @@ jobs:
 Ограничения и как с ними жить:
 
 - `deploy/nginx/zag.conf` и `deploy/docker-compose.yml` не входят ни в
-  один пакет → turbo их не видит. Либо сделать `deploy/` пакетом
+  один пакет → turbo их не видит (compose берётся из чекаута, но правка
+  только compose сервер не передеплоит). Либо сделать `deploy/` пакетом
   `@zag/deploy` с пустым `build`, от которого зависит `server`
   (тогда правка compose передеплоит сервер), либо раскатывать их руками.
   Принято: отдельный пакет `@zag/deploy` **[решить]**.
@@ -376,10 +371,13 @@ jobs:
   предшественником. Если ран упал, следующий push *не* повторит его
   изменения — для этого есть `workflow_dispatch` с ручным выбором
   `web`/`server`/`all` (добавить в `deploy.yml`).
-- Секреты и переменные: `DEPLOY_SSH_KEY` (secret), `DEPLOY_HOST`,
-  `VITE_SOCKET_URL` (vars, environment `production`). Серверный `.env`
-  (CCS, TD, § 7 `shared-modules.md`) лежит на хосте в `/srv/zag/.env`
-  и в CI не попадает.
+- Секретов в GitHub нет: раннер стоит на хосте, SSH и registry не
+  используются. Единственная переменная — `VITE_SOCKET_URL` (environment
+  `production`, пустая). Серверный `.env` (CCS, TD, § 7
+  `shared-modules.md`) лежит на хосте в `/srv/zag/.env` и в git не
+  попадает.
+- Self-hosted runner исполняет код из `master`; `ci.yml` (в т.ч. для PR)
+  остаётся на `ubuntu-latest`, чтобы чужой PR не выполнялся на хосте.
 
 ## 8. Локальная разработка
 
