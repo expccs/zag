@@ -26,15 +26,14 @@ sudo nginx -t && sudo systemctl reload nginx
 ## Runner
 
 GitHub → repo → Settings → Actions → Runners → New self-hosted runner →
-Linux x64. Выполнить показанные там команды **от пользователя `deploy`**,
-при `config.sh` добавить метку `zag` (workflow выбирает
-`runs-on: [self-hosted, zag]`):
+Linux x64. Выполнить показанные там команды **от пользователя `deploy`**
+(workflow выбирает `runs-on: self-hosted`, дополнительных меток не нужно):
 
 ```bash
 sudo -iu deploy
 mkdir actions-runner && cd actions-runner
 # curl + tar из инструкции GitHub
-./config.sh --url https://github.com/expccs/zag --token <TOKEN> --labels zag --unattended
+./config.sh --url https://github.com/expccs/zag --token <TOKEN> --unattended
 exit
 sudo /home/deploy/actions-runner/svc.sh install deploy   # systemd-сервис
 sudo /home/deploy/actions-runner/svc.sh start

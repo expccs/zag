@@ -12,7 +12,7 @@ Handoff log between agent sessions. Newest entry on top. See the
   the SSH/GHCR flow, whose first run failed with an empty
   `DEPLOY_SSH_KEY`):
   - `deploy.yml`: `detect` stays on `ubuntu-latest`; `deploy-web` and
-    `deploy-server` run on `[self-hosted, zag]`. Web: build → rsync into
+    `deploy-server` run on `self-hosted`. Web: build → rsync into
     `/srv/zag/releases/<sha>` → `chmod -R u=rwX,go=rX` → atomic symlink
     `/srv/zag/ui` (a hand-made real dir is moved to `releases/manual-<ts>`),
     keep current + 4. Server: local `docker build` → `zag-server:<sha>` +
@@ -21,14 +21,14 @@ Handoff log between agent sessions. Newest entry on top. See the
     No SSH, no GHCR, no secrets; only var `VITE_SOCKET_URL`.
   - `deploy/docker-compose.yml`: `name: zag`, image `zag-server:${SERVER_TAG}`,
     used from the checkout (not copied to the host). `deploy/README.md`:
-    runner install as user `deploy` with label `zag`; `docs/monorepo.md`
+    runner install as user `deploy`; `docs/monorepo.md`
     § 5–7 synced. `deploy/nginx/zag.conf`: `open_file_cache` dropped (stale
     fds after symlink switch).
   - Verified: YAML parses, web release step simulated locally (real-dir
     case, prune, perms). **Not** verified: a run on the real runner,
     `nginx -t`, docker steps (no Docker locally).
 - **Next step:** install the self-hosted runner per `deploy/README.md`
-  (user `deploy`, label `zag`, `/srv/zag/.env`, new `zag.conf` + `nginx -t`),
+  (user `deploy`, `/srv/zag/.env`, new `zag.conf` + `nginx -t`),
   commit + push, then `Actions → deploy → Run workflow → all`.
 - **Blockers / open questions:** if the repo is public, confirm the
   self-hosted runner is only used by `deploy.yml` (push to `master` /

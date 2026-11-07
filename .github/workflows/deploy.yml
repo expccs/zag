@@ -64,7 +64,7 @@ jobs:
   deploy-web:
     needs: detect
     if: needs.detect.outputs.web == 'true'
-    runs-on: [self-hosted, zag]
+    runs-on: self-hosted
     timeout-minutes: 15
     environment: production
     steps:
@@ -103,7 +103,7 @@ jobs:
   deploy-server:
     needs: detect
     if: needs.detect.outputs.server == 'true'
-    runs-on: [self-hosted, zag]
+    runs-on: self-hosted
     timeout-minutes: 20
     environment: production
     steps:

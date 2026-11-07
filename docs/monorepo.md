@@ -239,7 +239,7 @@ origin сайта.
 
 Разовая настройка хоста (`deploy/README.md`): `mkdir -p /srv/zag/releases`,
 пользователь `deploy` в группе `docker` с правом писать в `/srv/zag`,
-`/srv/zag/.env`, и **self-hosted GitHub Actions runner** с меткой `zag`,
+`/srv/zag/.env`, и **self-hosted GitHub Actions runner**,
 установленный как systemd-сервис от `deploy`. SSH-ключи и registry не нужны.
 
 ## 7. CI/CD: деплоим только то, что изменилось
@@ -311,7 +311,7 @@ jobs:
   deploy-web:
     needs: detect
     if: needs.detect.outputs.web == 'true'
-    runs-on: [self-hosted, zag]
+    runs-on: self-hosted
     environment: production
     steps:
       - uses: actions/checkout@v4
@@ -333,7 +333,7 @@ jobs:
   deploy-server:
     needs: detect
     if: needs.detect.outputs.server == 'true'
-    runs-on: [self-hosted, zag]
+    runs-on: self-hosted
     environment: production
     steps:
       - uses: actions/checkout@v4
