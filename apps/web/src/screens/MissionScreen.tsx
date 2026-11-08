@@ -90,7 +90,7 @@ const MissionScreen = () => {
         ))}
       </div>
       <div className={styles.cta}>
-        <GlassLink variant="mission" to="/">
+        <GlassLink variant="mission" to="/touch">
           {mission.cta}
         </GlassLink>
       </div>

@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -7,6 +8,7 @@ import {
 } from 'react';
 import { io } from 'socket.io-client';
 import { createConnectionStore } from './connection-store';
+import { createServerStateStore } from './server-state-store';
 import { getUserId } from './user-id';
 import { SocketContext, type SocketContextValue } from './socket-context';
 
@@ -29,46 +31,52 @@ const createSocket = (url: string) =>
 
 const createConnection = (url: string) => {
   const socket = createSocket(url);
-  const store = createConnectionStore(socket);
-  return { socket, store };
+  const connection = createConnectionStore(socket);
+  const serverState = createServerStateStore(socket);
+  return { socket, connection, serverState };
 };
 
+/**
+ * One socket for the whole app. Nothing connects by itself: the screen
+ * that needs the server (Touch & Create and the interactive flow,
+ * shared-modules.md § 6) calls `connect()` on mount and `disconnect()`
+ * on unmount; Home and Mission never touch it.
+ */
 export const SocketProvider = ({
   url = import.meta.env.VITE_SOCKET_URL ?? '',
   autoConnect = false,
   children,
 }: SocketProviderProps) => {
-  const [{ socket, store }] = useState(() => createConnection(url));
+  const [{ socket, connection, serverState }] = useState(() =>
+    createConnection(url),
+  );
   const { status, error } = useSyncExternalStore(
-    store.subscribe,
-    store.getSnapshot,
+    connection.subscribe,
+    connection.getSnapshot,
+  );
+  const state = useSyncExternalStore(
+    serverState.subscribe,
+    serverState.getSnapshot,
   );
 
+  const connect = useCallback(() => {
+    socket.connect();
+    connection.refresh();
+  }, [socket, connection]);
+
+  const disconnect = useCallback(() => {
+    socket.disconnect();
+    connection.refresh();
+  }, [socket, connection]);
+
   useEffect(() => {
-    if (autoConnect) {
-      socket.connect();
-      store.refresh();
-    }
-    return () => {
-      if (autoConnect) socket.disconnect();
-    };
-  }, [socket, store, autoConnect]);
+    if (autoConnect) connect();
+    return autoConnect ? disconnect : undefined;
+  }, [autoConnect, connect, disconnect]);
 
   const value = useMemo<SocketContextValue>(
-    () => ({
-      socket,
-      status,
-      error,
-      connect: () => {
-        socket.connect();
-        store.refresh();
-      },
-      disconnect: () => {
-        socket.disconnect();
-        store.refresh();
-      },
-    }),
-    [socket, store, status, error],
+    () => ({ socket, status, error, state, connect, disconnect }),
+    [socket, status, error, state, connect, disconnect],
   );
 
   return (

@@ -234,9 +234,14 @@ CCS ──socket.io──▶ CloudClient ──stateChange──▶ AppState ─
 Стек и сборка — в [`docs/monorepo.md`](../monorepo.md). Переносится
 подход tv-tower-ui, не Кутаиси:
 
-- Один `SocketProvider` с `socket.io-client`, `autoConnect: false`,
-  подключение только на экранах, где нужен сервер (Home и Mission без
-  сокета — как в Кутаиси `App.jsx`).
+- Один `SocketProvider` с `socket.io-client`, `autoConnect: false`.
+  **Сокет открывается только начиная с экрана «Touch & Create»** (куда
+  ведёт кнопка «Touch & Create» / «Доторкнись і твори» на Mission; в
+  Figma — секция «СПОВІЩЕННЯ» и далее «Інтерактиви»). Home и Mission
+  работают без соединения (как в Кутаиси `App.jsx`): ни `state:update`,
+  ни индикатора связи на них нет. При уходе с «Touch & Create» назад на
+  Home / Mission соединение закрывается (`socket.disconnect()`), чтобы
+  читатели лендинга не держали сокеты и не занимали очередь.
 - Геолокация: `navigator.geolocation.watchPosition(…, { enableHighAccuracy:
 true })` запускается только когда `flags.locationRestriction === true`;
   каждая позиция уходит в `geo:check` с ack; `clearWatch` при размонтировании

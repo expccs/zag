@@ -5,6 +5,62 @@ Handoff log between agent sessions. Newest entry on top. See the
 
 ---
 
+- **Timestamp:** 2026-11-08T07:30:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:** Touch & Create screen with the live server connection
+  (uncommitted, on `master`):
+  - `apps/web/src/screens/TouchScreen.tsx` (+ `touch/*`, lazy route
+    `/touch`; Mission button now leads here): `connect()` on mount,
+    `disconnect()` on unmount — the only place the socket opens. View is
+    resolved from connection status first, then `PublicState.screen`:
+    `lost` (offline / connect_error, frames `45:3440` / `47:3912` with the
+    unplugged-cable SVG), `connecting` (first attempt), `schedule`
+    (`45:3600` / `47:4007`, hours 18:00–22:00 from `SCHEDULE_HOURS` — the
+    protocol has no hours field), `maintenance` / `disabled` (notice
+    layout, texts are mine — no Figma frame), `interactive` → modes list
+    `26:1957` / `47:4183` (liquid-glass card; only «Комета» is listed — the
+    user deferred «Чумацький шлях» and «Палітра»; static until stage 4).
+  - `src/socket/server-state-store.ts`: `useSyncExternalStore` over
+    `state:update`; on every `connect` also `state:get`, so a change on the
+    server re-renders the screen immediately (verified with a fake server
+    via CDP: switch interactive → schedule → maintenance → disabled lands
+    in < 5 ms; server kill → «Зв'язок втрачено» in 100 ms; server restart
+    → recovered in 2.5 s). `connection-store.ts`: status `offline` for any
+    drop after a successful connect except `disconnect()` from the app;
+    `io server disconnect` (server restart) retries after 1 s because
+    socket.io-client does not. `SocketProvider` exposes `state` and stable
+    `connect` / `disconnect` (`useCallback`).
+  - Assets: `public/bg-touch.jpg` (blurred `image 27` for the 393 × 852
+    frames, recipe `docs/design/assets/images/bg-touch-blur-render.html`),
+    `public/icons/no-connection.svg`, `public/modes/*.jpg` (300 px).
+  - Headless Chrome `--screenshot` does not wait for WebSockets; the e2e
+    check used a CDP script (Node `ws` + `Emulation.setDeviceMetricsOverride`
+    393 × 852 @2x) against a fake Socket.IO server serving `dist/`.
+- **Next step:** stage 4 — make the mode cards navigate to the
+  instruction / settings screens and request `session:request`; geo-fence
+  (`geo:check`) when `flags.locationRestriction` is on.
+- **Blockers / open questions:** `maintenance`, `disabled` and `connecting`
+  wording is not in Figma — needs the designer / client; schedule hours are
+  hardcoded until the protocol carries them; UA Mission title still English
+  in Figma `8:146`.
+
+---
+
+- **Timestamp:** 2026-11-08T09:00:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:** documented the socket rule (user decision): the
+  Socket.IO connection opens **only starting from the «Touch & Create»
+  screen** (target of the Mission button); Home and Mission never connect,
+  leaving that screen disconnects. Written into `shared-modules.md` § 6,
+  `roadmap.md` stage 3, and the open question below is closed. Code is
+  unchanged: `SocketProvider` is mounted with `autoConnect: false` and no
+  screen calls `connect()` yet.
+- **Next step:** add the `/touch` route (Touch & Create screen) that calls
+  `connect()` on mount / `disconnect()` on unmount, point the Mission
+  button at it, then the `state:update` screens on top of it.
+
+---
+
 - **Timestamp:** 2026-11-07T16:30:00Z
 - **Agent / model:** Claude Fable 5.1
 - **What changed:** stage 3 started in `apps/web` (uncommitted, on `master`):
@@ -51,8 +107,9 @@ Handoff log between agent sessions. Newest entry on top. See the
   `disabled` / `schedule`, «Зв'язок втрачено») behind an interactive
   route, then the interactive flow of stage 4.
 - **Blockers / open questions:** UA Mission title is English in Figma
-  `8:146` («Mission & Philosophy») — confirm with the designer; where
-  «Touch & Create» should lead before stage 4 (now `/`).
+  `8:146` («Mission & Philosophy») — confirm with the designer. Decided
+  2026-11-08: «Touch & Create» leads to the Touch & Create screen and the
+  socket connects only from there (see the entry above).
 
 ---
 

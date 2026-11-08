@@ -5,6 +5,7 @@
  * designer), Mission ENG `38:3029`. Titles carry the frame's line break;
  * `gap` blocks reproduce the empty lines of the Figma text layer.
  */
+import type { InteractiveMode } from '@zag/protocol';
 import type { Language } from './language-context';
 
 export type Inline = string | { bold: string };
@@ -17,6 +18,20 @@ export type Block =
 export interface MissionPhoto {
   src: string;
   alt: string;
+}
+
+/** Centred h3 + body of the Touch & Create notices (`45:3440`, `45:3600`). */
+export interface Notice {
+  title: string;
+  body: string;
+}
+
+export interface ModeCard {
+  mode: InteractiveMode;
+  title: string;
+  body: string;
+  preview: string;
+  previewAlt: string;
 }
 
 export interface Messages {
@@ -35,7 +50,31 @@ export interface Messages {
     photos: MissionPhoto[];
     cta: string;
   };
+  touch: {
+    /** First connection in progress. Not in Figma, wording is ours. */
+    connecting: Notice;
+    /** `45:3440` / `47:3912` — also used while reconnecting. */
+    lost: Notice;
+    /** `screen: 'maintenance'`. Not in Figma (design-system.md § 11). */
+    maintenance: Notice;
+    /** `screen: 'disabled'`. Not in Figma. */
+    disabled: Notice;
+    /** `45:3600` / `47:4007`: «з 18:00 до 22:00». */
+    schedule: Notice & { from: string; to: string };
+    /** `26:1957` / `47:4183`; only the comet card for now. */
+    modes: { title: string; cards: ModeCard[] };
+  };
 }
+
+/**
+ * Facade hours shown on the schedule notice. The protocol carries only the
+ * `schedule` flag, not the hours (shared-modules.md § 4); until it does the
+ * values come from the Figma frame.
+ */
+export const SCHEDULE_HOURS = { open: '18:00', close: '22:00' } as const;
+
+/** Only «Комета» ships for now; the other two modes come later. */
+const COMET_PREVIEW = '/modes/comet.jpg';
 
 const PHOTOS = {
   hero: '/mission/facade-night-front.jpg',
@@ -120,6 +159,52 @@ const uk: Messages = {
     ],
     cta: 'Доторкнись і твори',
   },
+  touch: {
+    connecting: {
+      title: 'Зачекайте будь-ласка!',
+      body: 'Підключаємось до фасаду…',
+    },
+    lost: {
+      title: "Зв'язок втрачено",
+      body:
+        'Ви знаходитесь поза зоною дії. Будь ласка, підійдіть ближче до ' +
+        'будівлі, щоб підключитися знову.',
+    },
+    maintenance: {
+      title: 'Технічна перерва',
+      body:
+        'Фасад тимчасово недоступний. Ми вже працюємо над цим, спробуйте ' +
+        'трохи пізніше.',
+    },
+    disabled: {
+      title: 'Інтерактив вимкнено',
+      body: 'Керування фасадом зараз недоступне. Завітайте іншим разом.',
+    },
+    schedule: {
+      title: 'Графік роботи',
+      body:
+        'Щоб ви могли насолодитися малюнками у всій красі, ми вмикаємо ' +
+        'керування фасадом лише з настанням темряви.',
+      from: 'з',
+      to: 'до',
+    },
+    modes: {
+      title: 'Режими',
+      cards: [
+        {
+          mode: 'comet',
+          preview: COMET_PREVIEW,
+          title: 'Комета',
+          body:
+            'Кожен ваш жест запускає на фасаді яскраву комету. Лінії не ' +
+            'залишаються статичними — вони ефектно спалахують у точці дотику ' +
+            'і красиво згасають, залишаючи сяючий слід. Жодних меж для ' +
+            'фантазії: малюйте динамічні візерунки, які змінюються щосекунди!',
+          previewAlt: 'Комета на нічному небі',
+        },
+      ],
+    },
+  },
 };
 
 const en: Messages = {
@@ -194,6 +279,52 @@ const en: Messages = {
       { src: PHOTOS.exhibit, alt: 'Immersive installation' },
     ],
     cta: 'Touch & Create',
+  },
+  touch: {
+    connecting: {
+      title: 'Please wait!',
+      body: 'Connecting to the facade…',
+    },
+    lost: {
+      title: 'Connection lost',
+      body:
+        'You are out of range. Please move closer to the building to ' +
+        'reconnect.',
+    },
+    maintenance: {
+      title: 'Maintenance break',
+      body:
+        'The facade is temporarily unavailable. We are already working on ' +
+        'it, please try again a bit later.',
+    },
+    disabled: {
+      title: 'Interactive is off',
+      body: 'Facade control is unavailable right now. Please come back later.',
+    },
+    schedule: {
+      title: 'Operating hours',
+      body:
+        'To enjoy the artwork in all its beauty, you can control the facade ' +
+        'only after dark.',
+      from: 'from',
+      to: 'to',
+    },
+    modes: {
+      title: 'Modes',
+      cards: [
+        {
+          mode: 'comet',
+          preview: COMET_PREVIEW,
+          title: 'Comet',
+          body:
+            'Every gesture launches a bright comet across the facade. Lines ' +
+            "don't stay still — they flare at your touch and gently fade, " +
+            'leaving a glowing trail. Let your imagination run free: draw ' +
+            'dynamic patterns that change every second!',
+          previewAlt: 'Comet in the night sky',
+        },
+      ],
+    },
   },
 };
 

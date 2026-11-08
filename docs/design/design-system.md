@@ -76,6 +76,10 @@ style, одна локальная компонента списка режим�
 (1080 × 1920, тёплые оранжевые волны на чёрном) с настройками Figma:
 `scaleMode FILL`, contrast +0.10, saturation −0.06 и **Layer blur 73 px**.
 Рендер на 393 × 852 лежит в `bg-interactive-rendered-393x852.png`.
+В `apps/web/public/bg-touch.jpg` (786 × 1704) тот же слой отрендерен headless Chrome
+по геометрии фреймов 393 × 852 (`image 27` 473 × 935 at (−7, −8), Layer blur 79 → CSS 39.7,
+contrast 1.1, saturate 0.94) — рецепт `images/bg-touch-blur-render.html`; экраны
+`/touch` накладывают его `center top / cover`.
 В вебе: либо отдать рендер как `<Image fill>`, либо исходник с
 `filter: blur(73px) contrast(1.1) saturate(0.94); transform: scale(1.1)`
 (scale компенсирует размытые края).

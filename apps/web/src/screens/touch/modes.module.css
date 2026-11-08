@@ -1,0 +1,86 @@
+/* 26:1957: h1 Unbounded Medium 39.6 at (23.9, 157.4); list 351 wide at
+   (25, 230), cards 351 × 151 with gap 7 and a 3 px border. Inside a card
+   (offsets minus the border): preview ≈ 130 × 126 at (11, 12), text column
+   at (155, 17) width 171: title Bold 13.7 uppercase, body Regular 8.5, gap 4. */
+.modes {
+  flex: 1;
+  padding: 0 18px 32px var(--space-6);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-unbounded);
+  font-weight: 500;
+  font-size: 39.6px;
+  line-height: normal;
+}
+
+.list {
+  width: 351px;
+  max-width: 100%;
+  margin: 24px 0 0 1px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+/* liquid glass, design-system.md § 5.2 */
+.card {
+  position: relative;
+  height: 151px;
+  border-radius: 20px;
+  background: rgba(217, 217, 217, 0.01);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    inset 18px 18px 10px -20px #fff,
+    inset -14px -14px 7px -12px #b3b3b3;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 0 28px rgba(255, 255, 255, 0.05);
+}
+
+.preview {
+  position: absolute;
+  left: 8px;
+  top: 9px;
+  width: 130px;
+  height: 126px;
+  border-radius: 18px;
+  object-fit: cover;
+  box-shadow: 0 3px 5.5px rgba(0, 0, 0, 0.32);
+}
+
+.text {
+  position: absolute;
+  left: 152px;
+  top: 14px;
+  width: 171px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--font-unbounded);
+  line-height: normal;
+}
+
+.cardTitle {
+  margin: 0;
+  font-weight: 700;
+  font-size: 13.7px;
+  text-transform: uppercase;
+}
+
+.cardBody {
+  margin: 0;
+  font-weight: 400;
+  font-size: 8.5px;
+}

@@ -1,0 +1,77 @@
+/* 45:3600 (393 × 852): h3 Unbounded SemiBold 20.9 at y = 182, body
+   Montserrat 11.7 centred 305 wide at y = 216; the 45:3440 UA frame is the
+   same layout scaled ×1.07. */
+.notice {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 25px var(--space-6) 0;
+  text-align: center;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-unbounded);
+  font-weight: 600;
+  font-size: 21px;
+  line-height: normal;
+}
+
+.body {
+  margin: 8px 0 0;
+  max-width: 325px;
+  font-family: var(--font-montserrat);
+  font-weight: 400;
+  font-size: 12px;
+  line-height: normal;
+}
+
+/* «з» Light 15.9 at y = 285, «18:00» SemiBold 40.2 at y = 307,
+   «до» at y = 371, «22:00» at y = 400. */
+.hours {
+  margin: 32px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: var(--font-unbounded);
+  line-height: normal;
+}
+
+.prep {
+  font-weight: 300;
+  font-size: 16px;
+}
+
+.prepTo {
+  margin-top: 14px;
+}
+
+.time {
+  margin-top: 2px;
+  font-weight: 600;
+  font-size: 40px;
+}
+
+.timeTo {
+  margin-top: 9px;
+}
+
+/* Drawing of 47:3912: SVG frame 644 × 784 at (58.6, 260.3) of the screen.
+   `.art` spans the whole notice (which starts at y = 157, padding included),
+   so the image keeps the Figma offset. */
+.art {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.artImage {
+  position: absolute;
+  left: 58.6px;
+  top: calc(260.3px - 157px);
+  width: 644px;
+  height: 784px;
+}

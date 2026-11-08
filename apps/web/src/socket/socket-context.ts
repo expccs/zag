@@ -1,6 +1,10 @@
 import { createContext } from 'react';
 import type { Socket } from 'socket.io-client';
-import type { ClientToServerEvents, ServerToClientEvents } from '@zag/protocol';
+import type {
+  ClientToServerEvents,
+  PublicState,
+  ServerToClientEvents,
+} from '@zag/protocol';
 
 export type ZagSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -11,6 +15,9 @@ export interface SocketContextValue {
   status: ConnectionStatus;
   /** Last connect_error message (e.g. 'EAUTH'); null once connected. */
   error: string | null;
+  /** Latest `state:update` from the server; null until the first one. */
+  state: PublicState | null;
+  /** Stable callbacks: safe as effect dependencies. */
   connect: () => void;
   disconnect: () => void;
 }
