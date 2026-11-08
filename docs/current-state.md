@@ -5,6 +5,35 @@ Handoff log between agent sessions. Newest entry on top. See the
 
 ---
 
+- **Timestamp:** 2026-11-08T10:30:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:** Header logo is full-bleed (uncommitted, on `master`):
+  `apps/web/src/components/zag-header.module.css` breaks the strip out of
+  the centred column and its padding (`width: 100vw; margin-left:
+  calc(50% - 50vw)`), height follows the 374 × 34 aspect (≈ 36 px at 393)
+  with a 48 px cap and `object-fit: cover`; `styles/global.css` adds
+  `overflow-x: clip` on `body` so a desktop scrollbar does not add a
+  horizontal one. Verified over CDP at 393 and 360 px on `/`, `/mission`,
+  `/touch`: logo rect x = 0, width = viewport, `scrollWidth` = viewport.
+  Native-app feel: viewport meta `maximum-scale=1, user-scalable=no`;
+  `html, body` get `overflow-x: clip`, `overscroll-behavior: none`,
+  `touch-action: pan-y` (vertical scroll only, no sideways pan, no
+  double-tap zoom, no pull-to-refresh); `body` has `user-select: none` and
+  `-webkit-touch-callout: none`; `img` gets `pointer-events: none`,
+  `-webkit-user-drag: none` (no long-press «Save image», taps fall through
+  to the surrounding link). `src/native-feel.ts` (called from `main.tsx`)
+  blocks `gesturestart` / multi-touch `touchmove` (Safari tab ignores
+  `user-scalable=no`) and `contextmenu` on coarse pointers.
+  Proportional scaling (design-system.md § 1): `html { font-size:
+  min(calc(100vmin / 393 * 16), 17.92px) }` and every px in the web CSS
+  modules converted to rem (px / 16, 144 values; footer logos sized in rem
+  instead of HTML attributes). Verified over CDP at 320 / 360 / 393 / 430
+  / 1200 px: root font and all measured heights scale by width / 393, cap
+  holds at 1200.
+- **Next step:** stage 4 — actions behind the «Комета» card.
+
+---
+
 - **Timestamp:** 2026-11-08T07:30:00Z
 - **Agent / model:** Claude Fable 5.1
 - **What changed:** Touch & Create screen with the live server connection

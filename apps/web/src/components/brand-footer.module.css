@@ -3,10 +3,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 42px;
-  padding: 0 0 25px;
+  gap: 2.625rem;
+  padding: 0 0 1.5625rem;
 }
 
 .footer img {
   display: block;
+  height: auto;
+}
+
+.footer img:first-child {
+  width: 8.625rem;
+}
+
+.footer img:last-child {
+  width: 5.5rem;
 }

@@ -7,7 +7,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 25px var(--space-6) 0;
+  padding: 1.5625rem var(--space-6) 0;
   text-align: center;
 }
 
@@ -15,23 +15,23 @@
   margin: 0;
   font-family: var(--font-unbounded);
   font-weight: 600;
-  font-size: 21px;
+  font-size: 1.3125rem;
   line-height: normal;
 }
 
 .body {
-  margin: 8px 0 0;
-  max-width: 325px;
+  margin: 0.5rem 0 0;
+  max-width: 20.3125rem;
   font-family: var(--font-montserrat);
   font-weight: 400;
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: normal;
 }
 
 /* «з» Light 15.9 at y = 285, «18:00» SemiBold 40.2 at y = 307,
    «до» at y = 371, «22:00» at y = 400. */
 .hours {
-  margin: 32px 0 0;
+  margin: 2rem 0 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -41,21 +41,21 @@
 
 .prep {
   font-weight: 300;
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .prepTo {
-  margin-top: 14px;
+  margin-top: 0.875rem;
 }
 
 .time {
-  margin-top: 2px;
+  margin-top: 0.125rem;
   font-weight: 600;
-  font-size: 40px;
+  font-size: 2.5rem;
 }
 
 .timeTo {
-  margin-top: 9px;
+  margin-top: 0.5625rem;
 }
 
 /* Drawing of 47:3912: SVG frame 644 × 784 at (58.6, 260.3) of the screen.
@@ -70,8 +70,8 @@
 
 .artImage {
   position: absolute;
-  left: 58.6px;
-  top: calc(260.3px - 157px);
-  width: 644px;
-  height: 784px;
+  left: 3.6625rem;
+  top: calc(16.2688rem - 9.8125rem);
+  width: 40.25rem;
+  height: 49rem;
 }

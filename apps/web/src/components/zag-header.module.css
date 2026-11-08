@@ -1,15 +1,19 @@
-/* Logo strip is 374 × 34 and may bleed past a padded column (Figma: 404 wide at x = −14). */
+/* Logo strip, y = 27 (design-system.md § 1: «SVG на всю ширину»; Figma draws
+   it 404 wide at x = −14). It breaks out of the centred column and any
+   column padding and spans the viewport edge to edge. The height follows
+   the 374 × 34 aspect (≈ 36 px at 393) and is capped on wide screens, where
+   `object-fit: cover` crops the pattern instead of stretching it. */
 .header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  height: 95px;
-  padding-top: 27px;
+  height: 5.9375rem;
+  padding-top: 1.6875rem;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
 }
 
 .logo {
-  flex: none;
-  width: 374px;
-  max-width: 100vw;
-  height: 34px;
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 3rem;
+  object-fit: cover;
 }

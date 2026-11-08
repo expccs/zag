@@ -4,40 +4,40 @@
    at (155, 17) width 171: title Bold 13.7 uppercase, body Regular 8.5, gap 4. */
 .modes {
   flex: 1;
-  padding: 0 18px 32px var(--space-6);
+  padding: 0 1.125rem 2rem var(--space-6);
 }
 
 .title {
   margin: 0;
   font-family: var(--font-unbounded);
   font-weight: 500;
-  font-size: 39.6px;
+  font-size: 2.475rem;
   line-height: normal;
 }
 
 .list {
-  width: 351px;
+  width: 21.9375rem;
   max-width: 100%;
-  margin: 24px 0 0 1px;
+  margin: 1.5rem 0 0 0.0625rem;
   padding: 0;
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 0.4375rem;
 }
 
 /* liquid glass, design-system.md § 5.2 */
 .card {
   position: relative;
-  height: 151px;
-  border-radius: 20px;
+  height: 9.4375rem;
+  border-radius: 1.25rem;
   background: rgba(217, 217, 217, 0.01);
-  backdrop-filter: blur(40px);
-  -webkit-backdrop-filter: blur(40px);
-  border: 3px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(2.5rem);
+  -webkit-backdrop-filter: blur(2.5rem);
+  border: 0.1875rem solid rgba(255, 255, 255, 0.1);
   box-shadow:
-    inset 18px 18px 10px -20px #fff,
-    inset -14px -14px 7px -12px #b3b3b3;
+    inset 1.125rem 1.125rem 0.625rem -1.25rem #fff,
+    inset -0.875rem -0.875rem 0.4375rem -0.75rem #b3b3b3;
 }
 
 .card::before {
@@ -46,28 +46,28 @@
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  box-shadow: inset 0 0 28px rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 1.75rem rgba(255, 255, 255, 0.05);
 }
 
 .preview {
   position: absolute;
-  left: 8px;
-  top: 9px;
-  width: 130px;
-  height: 126px;
-  border-radius: 18px;
+  left: 0.5rem;
+  top: 0.5625rem;
+  width: 8.125rem;
+  height: 7.875rem;
+  border-radius: 1.125rem;
   object-fit: cover;
-  box-shadow: 0 3px 5.5px rgba(0, 0, 0, 0.32);
+  box-shadow: 0 0.1875rem 0.3438rem rgba(0, 0, 0, 0.32);
 }
 
 .text {
   position: absolute;
-  left: 152px;
-  top: 14px;
-  width: 171px;
+  left: 9.5rem;
+  top: 0.875rem;
+  width: 10.6875rem;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0.25rem;
   font-family: var(--font-unbounded);
   line-height: normal;
 }
@@ -75,12 +75,12 @@
 .cardTitle {
   margin: 0;
   font-weight: 700;
-  font-size: 13.7px;
+  font-size: 0.8562rem;
   text-transform: uppercase;
 }
 
 .cardBody {
   margin: 0;
   font-weight: 400;
-  font-size: 8.5px;
+  font-size: 0.5313rem;
 }

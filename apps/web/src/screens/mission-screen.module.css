@@ -26,25 +26,25 @@
 
 .nav {
   position: relative;
-  height: 102px;
-  padding: 12px 20px 0 0;
+  height: 6.375rem;
+  padding: 0.75rem 1.25rem 0 0;
   display: flex;
   justify-content: flex-end;
 }
 
 .nav > :first-child {
   position: absolute;
-  left: 19px;
-  top: 29.5px;
+  left: 1.1875rem;
+  top: 1.8438rem;
 }
 
 .hero {
   position: relative;
-  height: 247px;
+  height: 15.4375rem;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding-bottom: 16px;
+  padding-bottom: 1rem;
 }
 
 .heroPhoto {
@@ -60,23 +60,23 @@
   margin: 0;
   font-family: var(--font-unbounded);
   font-weight: 700;
-  font-size: 33px;
+  font-size: 2.0625rem;
   line-height: normal;
   text-align: center;
   white-space: pre-line;
-  text-shadow: 0 3.5px 3.5px var(--color-shadow);
+  text-shadow: 0 0.2188rem 0.2188rem var(--color-shadow);
 }
 
 .body {
-  padding: 60px 20px 100px 39px;
+  padding: 3.75rem 1.25rem 6.25rem 2.4375rem;
   font-family: var(--font-montserrat);
   font-weight: 400;
-  font-size: 14.8px;
+  font-size: 0.925rem;
   line-height: normal;
 }
 
 .body:lang(uk) {
-  font-size: 14.3px; /* 14 on the 385-wide UA frame 8:146 */
+  font-size: 0.8938rem; /* 14 on the 385-wide UA frame 8:146 */
 }
 
 .body b {
@@ -94,7 +94,7 @@
 
 .list {
   margin: 0;
-  padding-left: 22px;
+  padding-left: 1.375rem;
   list-style: disc;
 }
 
@@ -115,23 +115,23 @@
 }
 
 .photo:nth-child(1) {
-  height: 316px;
+  height: 19.75rem;
 }
 
 .photo:nth-child(2) {
-  height: 260px;
+  height: 16.25rem;
 }
 
 .photo:nth-child(3) {
-  height: 194px;
+  height: 12.125rem;
 }
 
 .cta {
   display: flex;
   justify-content: center;
-  padding: 30px var(--space-6) 65px;
+  padding: 1.875rem var(--space-6) 4.0625rem;
 }
 
 .footer {
-  padding-bottom: 52px;
+  padding-bottom: 3.25rem;
 }

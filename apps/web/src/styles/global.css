@@ -12,14 +12,14 @@
   --color-glass-border: rgba(255, 255, 255, 0.1);
   --color-shadow: rgba(0, 0, 0, 0.25);
 
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
 
-  --screen-width: 393px;
+  --screen-width: 24.5625rem;
 
   color-scheme: dark;
 }
@@ -30,11 +30,33 @@
   box-sizing: border-box;
 }
 
+/* Proportional scaling, design-system.md § 1. The mockups are 393 wide
+   (iPhone 16); every length in the app is in rem, with 1rem = 16 px at
+   that width, so a wider or narrower phone scales the whole picture by
+   100vmin / 393 (vmin: in landscape the 852 × 393 mockups are measured by
+   height). Capped at the width of the largest phones so a desktop does
+   not get a giant layout. */
+html {
+  font-size: min(calc(100vmin / 393 * 16), 17.92px);
+}
+
 html,
 body,
 #root {
   height: 100%;
   margin: 0;
+}
+
+/* Native-app feel: the page only scrolls vertically (no sideways pan from
+   the 100vw header or absolutely positioned art), no pinch / double-tap
+   zoom, no rubber-band or pull-to-refresh. Both `html` and `body` carry
+   the rules because iOS Safari ignores them on `body` alone. The drawing
+   canvas of stage 4 sets its own `touch-action: none`. */
+html,
+body {
+  overflow-x: clip;
+  overscroll-behavior: none;
+  touch-action: pan-y;
 }
 
 body {
@@ -43,16 +65,30 @@ body {
   font-family: var(--font-montserrat);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
-  overscroll-behavior: none;
+  /* No text selection or long-press callouts anywhere; opt back in on
+     inputs if the app ever gets them. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Images are decoration: no drag ghost, no long-press «Save image»,
+   taps fall through to the link or card around them. */
+img {
+  pointer-events: none;
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* Figma Glass approximation, design-system.md § 5.1 */
 .glass-pill {
   background: var(--color-glass-button);
-  backdrop-filter: blur(3px) saturate(1.15);
-  -webkit-backdrop-filter: blur(3px) saturate(1.15);
+  backdrop-filter: blur(0.1875rem) saturate(1.15);
+  -webkit-backdrop-filter: blur(0.1875rem) saturate(1.15);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+    inset 0 0.0625rem 0 rgba(255, 255, 255, 0.35),
+    inset 0 -0.0625rem 0 rgba(255, 255, 255, 0.08);
+  border: 0.0625rem solid rgba(255, 255, 255, 0.22);
 }
