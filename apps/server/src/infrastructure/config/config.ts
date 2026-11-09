@@ -15,6 +15,7 @@ import {
 } from '../ccs/ccs-ids';
 import type { ControlButton, ControlsConfig } from '../ccs/cloud-controls';
 import type { FacadeConfig } from '../touch-designer/facade-gateway-factory';
+import { TD_DEFAULT_URL } from '../touch-designer/touch-designer-client';
 
 export interface StateConfig {
   /** `_id` of the CCS program group holding the app-state switches. */
@@ -139,7 +140,7 @@ export class ConfigLoader {
       state: ConfigLoader.readState(reader, cloud.mode),
       controls: ConfigLoader.readControls(reader, cloud.mode),
       session: ConfigLoader.readSession(reader),
-      facade: ConfigLoader.readFacade(reader),
+      facade: ConfigLoader.readFacade(reader, cloud.mode),
     };
   }
 
@@ -151,9 +152,13 @@ export class ConfigLoader {
     };
   }
 
-  private static readFacade(reader: EnvReader): FacadeConfig {
+  // Online the facade LAN address is a project constant (like the CCS ids);
+  // offline there is no facade to reach, so the log-only adapter is used
+  // unless TD_WS_URL says otherwise.
+  private static readFacade(reader: EnvReader, mode: CloudMode): FacadeConfig {
+    const fallback = mode === 'offline' ? '' : TD_DEFAULT_URL;
     return {
-      url: reader.string('TD_WS_URL', '') || null,
+      url: reader.string('TD_WS_URL', fallback) || null,
       pingIntervalMs: reader.number('TD_PING_INTERVAL_MS', 30_000),
     };
   }

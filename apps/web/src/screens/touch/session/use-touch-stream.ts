@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { TouchEvent } from '@zag/protocol';
 
-const MOVE_INTERVAL_MS = 33;
+// TD takes stroke moves at ≤ 20/s (docs/touchdesigner-setup.md § 2).
+const MOVE_INTERVAL_MS = 50;
 
 interface Stroke {
   pointerId: number;
@@ -14,7 +15,7 @@ const clamp = (value: number): number => Math.min(1, Math.max(0, value));
  * Pointer events of the drawing surface → `touch:event` stream (protocol
  * § 4): unit coordinates inside the surface with the origin bottom-left,
  * `touch: 1` while the finger is
- * down (moves throttled to ~30/s), one `touch: 0` on release. One finger
+ * down (moves throttled to 20/s), one `touch: 0` on release. One finger
  * at a time, like the facade.
  * Returns a callback ref for the surface element.
  */

@@ -120,8 +120,9 @@ CCS в фоне с ретраями логина; на каждом событи
   клиенту `session:end`; `finish(fade, completed)` — ничего, следом идёт
   сеанс; `drain` → TD `drain`.
 - `cancel(userId)`; `handleTouch(userId, event)` — `true` только для
-  пользователя текущего сеанса на шаге `session`, событие уходит в TD
-  потоком (`stream`, без буфера).
+  пользователя текущего сеанса на шаге `session`; сервис считает фазу
+  штриха (`begin` / `move` / `end` по `touch`, сбрасывается на старте и
+  конце сеанса) и отдаёт точку в `facade.stream` (без буфера).
 - `userDisconnected` / `userConnected` — grace `disconnectGraceMs`: место
   держится, пока не вернулась хотя бы одна вкладка; по истечении —
   `cancel`.
@@ -130,17 +131,21 @@ CCS в фоне с ретраями логина; на каждом событи
 - `summary` → `/health.sessions: { active, waiting }`; `/health.facade:
   { connected, dropped }` — состояние TD и число отброшенных касаний.
 
-`FacadeGateway` (порт) → `infrastructure/touch-designer`:
-`TouchDesignerClient` (перенос `reference/touch-designer-client.ts`:
-реконнект с backoff, контроль pong, буфер 32 команд, поток без буфера)
-при заданном `TD_WS_URL`, иначе `OfflineFacade` (команды в лог).
-Выбор — `FacadeGatewayFactory.create(config.facade, logger)`. Если `groupID`
-кнопок не пуст (константа `CCS_CONTROLS_GROUP_ID`, env может обнулить),
-`Application.provideFacade` оборачивает рендерер в
-`CompositeFacade` вместе с `CloudControls` (`infrastructure/ccs`): тот же
-порт поверх `CloudGateway.execCommand`, `fade` / `session:start` → кнопки
-`WITH_PARAMS` с JSON сеанса, `session:end` / `drain` → кнопки `COMMAND`
-«Session end» / «Idle». `Application.start` вызывает `connect()`, `stop` —
+`FacadeGateway` (порт) → два адаптера. `infrastructure/touch-designer`:
+`TouchDesignerClient` (из `reference/touch-designer-client.ts`; адрес
+`TD_DEFAULT_URL` = `ws://10.11.68.104:82`, бесконечный реконнект раз в
+5 с с одним предупреждением на обрыв, контроль pong) — клиент к
+WebSocket-серверу TD, шлёт **только поток** `{ request: 'stream', payload: { type: 'stroke:*', point } }`
+(`docs/touchdesigner-setup.md` § 2), команды на этом сокете не
+отправляет; при пустом `TD_WS_URL` — `OfflineFacade` (команды в лог).
+Выбор — `FacadeGatewayFactory.create(config.facade, logger)`. Команды
+идут через CCS: если `groupID` кнопок не пуст (константа
+`CCS_CONTROLS_GROUP_ID`, env может обнулить), `Application.provideFacade`
+оборачивает рендерер в `CompositeFacade` вместе с `CloudControls`
+(`infrastructure/ccs`): тот же порт поверх `CloudGateway.execCommand`,
+`fade` / `session:start` → кнопки `WITH_PARAMS` с JSON сеанса,
+`session:end` / `drain` → кнопки `COMMAND` «Session end» / «Idle».
+`Application.start` вызывает `connect()`, `stop` —
 `close()`.
 
 `ZagSocketServer` держит `Map<userId, Set<Socket>>`: `notify*` доходят до

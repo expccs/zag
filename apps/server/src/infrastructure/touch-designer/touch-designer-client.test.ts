@@ -8,9 +8,8 @@ import { OfflineFacade } from './offline-facade';
 import { TouchDesignerClient } from './touch-designer-client';
 
 interface Received {
-  type: string;
-  timestamp?: string;
-  x?: number;
+  request: string;
+  payload: { type: string; point: { x: number; y: number } };
 }
 
 const sleep = (ms: number): Promise<void> =>
@@ -60,20 +59,20 @@ const logger = new StructuredLogger({ write: () => {} });
 const TOUCH = {
   type: 'touch:event' as const,
   sessionId: 's1',
+  phase: 'begin' as const,
   x: 0.5,
-  y: 0.5,
+  y: 0.25,
   touch: 1 as const,
 };
 
 describe('TouchDesignerClient', () => {
-  it('buffers commands until open, drops the stream, reconnects', async () => {
+  it('streams points as TD messages, drops them offline, reconnects', async () => {
     const td = new FakeTouchDesigner();
     await td.listening();
     const client = new TouchDesignerClient({
       url: td.url,
       logger,
-      reconnectBaseMs: 30,
-      reconnectMaxMs: 120,
+      reconnectMs: 30,
       pingIntervalMs: 50,
     });
     client.command({ type: 'drain' });
@@ -84,14 +83,26 @@ describe('TouchDesignerClient', () => {
     client.connect();
     await once(client, 'open');
     assert.equal(client.isConnected, true);
+    client.command({ type: 'drain' });
     assert.equal(client.stream(TOUCH), true);
-    await sleep(30);
-    assert.deepEqual(
-      td.received.map((message) => message.type),
-      ['drain', 'touch:event'],
+    assert.equal(client.stream({ ...TOUCH, phase: 'move', x: 0.6 }), true);
+    assert.equal(
+      client.stream({ ...TOUCH, phase: 'end', x: 0.7, touch: 0 }),
+      true,
     );
-    assert.ok(td.received[0].timestamp, 'commands carry a timestamp');
-    assert.equal(td.received[1].timestamp, undefined, 'stream does not');
+    await sleep(30);
+    const point = (x: number) => ({ x, y: 0.25 });
+    assert.deepEqual(td.received, [
+      {
+        request: 'stream',
+        payload: { type: 'stroke:begin', point: point(0.5) },
+      },
+      {
+        request: 'stream',
+        payload: { type: 'stroke:move', point: point(0.6) },
+      },
+      { request: 'stream', payload: { type: 'stroke:end', point: point(0.7) } },
+    ]);
 
     await td.close();
     await once(client, 'close');
@@ -100,6 +111,38 @@ describe('TouchDesignerClient', () => {
     assert.equal(client.stream(TOUCH), false);
     assert.equal(client.droppedCount, 2);
     client.close();
+  });
+
+  it('keeps retrying every interval until TD appears, warning once', async () => {
+    const lines: string[] = [];
+    const quiet = new StructuredLogger({ write: (line) => lines.push(line) });
+    const probe = new WebSocketServer({ port: 0 });
+    await new Promise<void>((resolve) => {
+      probe.once('listening', () => resolve());
+    });
+    const { port } = probe.address() as AddressInfo;
+    await new Promise<void>((resolve) => {
+      probe.close(() => resolve());
+    });
+
+    const client = new TouchDesignerClient({
+      url: `ws://127.0.0.1:${port}`,
+      logger: quiet,
+      reconnectMs: 40,
+    });
+    client.connect();
+    await sleep(150); // three or four failed attempts
+    assert.equal(client.isConnected, false);
+    const warnings = lines.filter((line) => line.includes('unreachable'));
+    assert.equal(warnings.length, 1, 'one warning per outage');
+
+    const td = new WebSocketServer({ port });
+    await once(client, 'open');
+    assert.equal(client.isConnected, true);
+    client.close();
+    await new Promise<void>((resolve) => {
+      td.close(() => resolve());
+    });
   });
 
   it('factory: offline facade without a URL, logging each command', () => {

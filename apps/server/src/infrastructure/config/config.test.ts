@@ -57,6 +57,7 @@ describe('ConfigLoader', () => {
     assert.equal(config.state.initial.techPause, true);
     assert.deepEqual(config.state.overrides, {});
     assert.equal(config.controls.groupID, CCS_CONTROLS_GROUP_ID);
+    assert.equal(config.facade.url, 'ws://10.11.68.104:82', 'TD on the LAN');
   });
 
   it('lets env override the constants and parses overrides', () => {

@@ -69,6 +69,7 @@ describe('CloudControls', () => {
       controls.stream({
         type: 'touch:event',
         sessionId: 's1',
+        phase: 'begin',
         x: 0,
         y: 0,
         touch: 1,
@@ -120,6 +121,7 @@ describe('CompositeFacade', () => {
       facade.stream({
         type: 'touch:event',
         sessionId: 's1',
+        phase: 'begin',
         x: 0.5,
         y: 0.5,
         touch: 1,

@@ -17,40 +17,50 @@ export interface TouchDesignerClientOptions {
   url: string;
   logger: Logger;
   pingIntervalMs?: number;
-  reconnectBaseMs?: number;
-  reconnectMaxMs?: number;
-  commandBufferSize?: number;
+  /** Pause between connection attempts; retried forever. */
+  reconnectMs?: number;
 }
 
-const DEFAULT_PING_INTERVAL_MS = 30_000;
-const DEFAULT_RECONNECT_BASE_MS = 1_000;
-const DEFAULT_RECONNECT_MAX_MS = 10_000;
-const DEFAULT_COMMAND_BUFFER_SIZE = 32;
+/** One point of the stream as TD reads it (docs/touchdesigner-setup.md § 2). */
+export interface StreamMessage {
+  request: 'stream';
+  payload: {
+    type: 'stroke:begin' | 'stroke:move' | 'stroke:end';
+    point: { x: number; y: number };
+  };
+}
 
-/**
- * `FacadeGateway` adapter: JSON over a WebSocket to TouchDesigner
- * (docs/backend/reference/touch-designer-client.ts). Reconnects with
- * backoff, watches pongs, keeps the last `commandBufferSize` commands
- * while offline and drops the touch stream instead of buffering it.
- */
+/** TouchDesigner WebSocket server on the facade LAN (`TD_WS_URL` overrides). */
+export const TD_DEFAULT_URL = 'ws://10.11.68.104:82';
+
+const DEFAULT_PING_INTERVAL_MS = 30_000;
+const DEFAULT_RECONNECT_MS = 5_000;
+
 // Typed base so that the class header fits one line.
 class Emitter extends EventEmitter<TouchDesignerEvents> {}
 
+/**
+ * `FacadeGateway` adapter for the point stream: a WebSocket client of the
+ * TouchDesigner server (`TD_WS_URL`), JSON `{ request: 'stream', payload }`
+ * per touch (docs/touchdesigner-setup.md § 2). Commands are not sent here:
+ * TD gets them from CCS (`CloudControls`). Keeps trying to connect for as
+ * long as the process lives (every `reconnectMs`, 5 s), so a facade that
+ * comes online later is picked up without a restart; an outage is logged
+ * once, not on every attempt. Watches pongs and drops points while offline
+ * (`droppedCount`) rather than replaying stale strokes.
+ */
 export class TouchDesignerClient extends Emitter implements FacadeGateway {
   private ws: WebSocket | null = null;
   private pingTimer: NodeJS.Timeout | null = null;
   private reconnectTimer: NodeJS.Timeout | null = null;
-  private reconnectDelayMs: number;
   private awaitingPong = false;
   private closed = false;
   private dropped = 0;
-  private readonly pendingCommands: string[] = [];
+  private outageLogged = false;
 
   private readonly url: string;
   private readonly pingIntervalMs: number;
-  private readonly reconnectBaseMs: number;
-  private readonly reconnectMaxMs: number;
-  private readonly commandBufferSize: number;
+  private readonly reconnectMs: number;
   private readonly logger: Logger;
 
   constructor(options: TouchDesignerClientOptions) {
@@ -58,11 +68,7 @@ export class TouchDesignerClient extends Emitter implements FacadeGateway {
     this.url = options.url;
     this.logger = options.logger;
     this.pingIntervalMs = options.pingIntervalMs ?? DEFAULT_PING_INTERVAL_MS;
-    this.reconnectBaseMs = options.reconnectBaseMs ?? DEFAULT_RECONNECT_BASE_MS;
-    this.reconnectMaxMs = options.reconnectMaxMs ?? DEFAULT_RECONNECT_MAX_MS;
-    this.commandBufferSize =
-      options.commandBufferSize ?? DEFAULT_COMMAND_BUFFER_SIZE;
-    this.reconnectDelayMs = this.reconnectBaseMs;
+    this.reconnectMs = options.reconnectMs ?? DEFAULT_RECONNECT_MS;
   }
 
   get isConnected(): boolean {
@@ -73,16 +79,26 @@ export class TouchDesignerClient extends Emitter implements FacadeGateway {
     return this.dropped;
   }
 
+  /** The TD message for a touch of the protocol. */
+  static toStream(touch: FacadeTouch): StreamMessage {
+    return {
+      request: 'stream',
+      payload: {
+        type: `stroke:${touch.phase}`,
+        point: { x: touch.x, y: touch.y },
+      },
+    };
+  }
+
   connect(): void {
     if (this.closed || this.ws) return;
     const ws = new WebSocket(this.url);
     this.ws = ws;
 
     ws.on('open', () => {
-      this.reconnectDelayMs = this.reconnectBaseMs;
+      this.outageLogged = false;
       this.logger.info('connected', { url: this.url });
       this.startPing();
-      this.flushCommands();
       this.emit('open');
     });
     ws.on('message', (raw) => {
@@ -92,7 +108,7 @@ export class TouchDesignerClient extends Emitter implements FacadeGateway {
       this.awaitingPong = false;
     });
     ws.on('error', (error) => {
-      this.logger.warn('socket error', { error: error.message });
+      this.reportOutage(error.message);
     });
     ws.on('close', (code, reason) => {
       this.stopPing();
@@ -102,24 +118,17 @@ export class TouchDesignerClient extends Emitter implements FacadeGateway {
     });
   }
 
+  /** Commands reach TD through CCS; nothing to send on this socket. */
+  command(_command: FacadeCommand): void {
+    this.logger.log('command handled by ccs', { url: this.url });
+  }
+
   stream(touch: FacadeTouch): boolean {
     if (!this.isConnected) {
       this.dropped++;
       return false;
     }
-    return this.sendRaw(JSON.stringify(touch));
-  }
-
-  command(command: FacadeCommand): void {
-    const payload = JSON.stringify({
-      ...command,
-      timestamp: new Date().toISOString(),
-    });
-    if (this.isConnected && this.sendRaw(payload)) return;
-    if (this.pendingCommands.length >= this.commandBufferSize) {
-      this.pendingCommands.shift();
-    }
-    this.pendingCommands.push(payload);
+    return this.sendRaw(JSON.stringify(TouchDesignerClient.toStream(touch)));
   }
 
   close(): void {
@@ -145,13 +154,6 @@ export class TouchDesignerClient extends Emitter implements FacadeGateway {
     } catch (error) {
       this.logger.warn('send failed', { error });
       return false;
-    }
-  }
-
-  private flushCommands(): void {
-    while (this.pendingCommands.length > 0 && this.isConnected) {
-      const payload = this.pendingCommands.shift() as string;
-      this.sendRaw(payload);
     }
   }
 
@@ -186,14 +188,22 @@ export class TouchDesignerClient extends Emitter implements FacadeGateway {
     this.pingTimer = null;
   }
 
+  // One warning per outage; the retries themselves stay quiet.
+  private reportOutage(error: string): void {
+    if (this.outageLogged) return;
+    this.outageLogged = true;
+    this.logger.warn('touchdesigner unreachable, retrying', {
+      url: this.url,
+      error,
+      retryMs: this.reconnectMs,
+    });
+  }
+
   private scheduleReconnect(): void {
     if (this.closed || this.reconnectTimer) return;
-    const delayMs = this.reconnectDelayMs;
-    this.reconnectDelayMs = Math.min(delayMs * 2, this.reconnectMaxMs);
-    this.logger.info('reconnect scheduled', { delayMs });
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       this.connect();
-    }, delayMs);
+    }, this.reconnectMs);
   }
 }

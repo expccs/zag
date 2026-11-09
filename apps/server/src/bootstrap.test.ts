@@ -84,11 +84,8 @@ class FakeClients implements ClientGateway {
 }
 
 interface FacadeMessage {
-  type: string;
-  sessionId?: string;
-  reason?: string;
-  mode?: string;
-  timestamp?: string;
+  request: string;
+  payload: { type: string; point: { x: number; y: number } };
 }
 
 /** Stands in for TouchDesigner: records every JSON message. */
@@ -284,32 +281,15 @@ describe('Application (composition root)', () => {
 
     for (const socket of [c1, c2]) socket.close();
 
-    // TouchDesigner saw the whole story, every command stamped.
+    // TouchDesigner saw only the stream: c1's single touch opened a
+    // stroke (commands reach TD through CCS, below); y is bottom-left.
     await sleep(20);
-    const [s1, s2, s3, s4] = [t1, t2, t3, t4].map((ticket) =>
-      ticket.success ? ticket.sessionId : '',
-    );
-    const brief = (message: FacadeMessage) =>
-      [message.type, message.sessionId, message.reason]
-        .filter((part) => part !== undefined)
-        .join(' ');
-    assert.deepEqual(td.received.map(brief), [
-      `fade ${s1}`,
-      `session:start ${s1}`,
-      `touch:event ${s1}`,
-      `session:end ${s1} completed`,
-      `fade ${s2}`,
-      `session:start ${s2}`,
-      `session:end ${s2} skipped`,
-      'drain',
-      `fade ${s4}`,
-      `session:start ${s4}`,
-      `session:end ${s4} skipped`,
-      'drain',
+    assert.deepEqual(td.received, [
+      {
+        request: 'stream',
+        payload: { type: 'stroke:begin', point: { x: 0.25, y: 0.75 } },
+      },
     ]);
-    assert.ok(s3, 'c3 had a ticket but never reached the facade');
-    const commands = td.received.filter((m) => m.type !== 'touch:event');
-    assert.ok(commands.every((m) => typeof m.timestamp === 'string'));
     assert.equal((await health()).facade.dropped, 0);
 
     // The CCS «Public app controls» buttons mirror the facade commands.

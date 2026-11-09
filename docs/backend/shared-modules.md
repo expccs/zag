@@ -208,55 +208,48 @@ CCS ──socket.io──▶ CloudClient ──stateChange──▶ AppState ─
 
 ---
 
-## 5. Протокол TouchDesigner (сервер → TD, JSON по WebSocket)
+## 5. Протокол TouchDesigner (фасад)
 
-Поток (`stream`, без буфера; `x`/`y` ∈ [0, 1], ноль в левом нижнем углу,
-`y` растёт вверх):
+Полный контракт для оператора TD — [`../touchdesigner-setup.md`](../touchdesigner-setup.md).
+TD держит один WebSocket-сервер (`TD_WS_URL`), в который приходят два
+вида сообщений, различимых по полю `request`:
+
+**Команды** идут **через CCS**: `CloudControls` (`infrastructure/ccs`)
+нажимает кнопки группы «Public app controls» (`ccs-ids.md`), CCS
+ретранслирует их устройству «SR7 Facade Interactive» как
+`{ request: "run", payload: { destination: "public_app", content, params } }`.
+`fade` и `session:start` → кнопки `WITH_PARAMS` с
+`params: [JSON {mode, params, durationMs}]`, `session:end` → «Session
+end», `drain` → «Idle» (`COMMAND`, без params). Порядок на один ход:
+`fade` (`FADE_MS`, как `Fade` в tv-tower / `fade` в Кутаиси) →
+`session_start` → поток → `session_end`; отменённый во время fade ход даёт
+`session_end` без `session_start`; `idle` — очередь пуста. Между ходами
+пауз нет.
+
+**Поток точек** идёт **напрямую**: `TouchDesignerClient`
+(`infrastructure/touch-designer`) — клиент к серверу TD
+(`ws://10.11.68.104:82`, константа `TD_DEFAULT_URL`), без буфера, точки
+при обрыве отбрасываются (`/health.facade.dropped`); подключается
+бесконечно с паузой 5 с (одно предупреждение в лог на обрыв), ping/pong
+каждые 30 с. Фаза штриха считается в `SessionService.handleTouch`
+по `touch` телефона (первое `1` → `begin`, дальше `move`, `0` → `end`,
+`0` без открытого штриха отбрасывается) и уходит как:
 
 ```json
-{
-  "type": "touch:event",
-  "sessionId": "…",
-  "x": 0.4213,
-  "y": 0.7712,
-  "touch": 1
-}
+{ "request": "stream", "payload": { "type": "stroke:begin", "point": { "x": 0.42, "y": 0.23 } } }
+{ "request": "stream", "payload": { "type": "stroke:move",  "point": { "x": 0.44, "y": 0.25 } } }
+{ "request": "stream", "payload": { "type": "stroke:end",   "point": { "x": 0.61, "y": 0.42 } } }
 ```
 
-Команды (`command`, буферизуются до реконнекта, получают `timestamp` ISO):
-
-```json
-{ "type": "fade", "sessionId": "…", "mode": "comet",
-  "params": { "head": "#FF4848", "tail": "#FF9F3F" }, "durationMs": 5000, "timestamp": "…" }
-{ "type": "session:start", "sessionId": "…", "mode": "comet",
-  "params": { "head": "#FF4848", "tail": "#FF9F3F" }, "durationMs": 40000, "timestamp": "…" }
-{ "type": "session:end", "sessionId": "…", "reason": "completed", "timestamp": "…" }
-{ "type": "drain", "timestamp": "…" }
-```
-
-Порядок на один ход: `fade` (TD за `durationMs` = `FADE_MS` переводит
-фасад к интерактиву, как `Fade` в tv-tower / `fade` в Кутаиси) →
-`session:start` (тот же `sessionId`) → поток `touch:event` →
-`session:end`. Если ход отменён во время fade (cancel, grace, техпауза),
-после `fade` приходит `session:end { reason: 'skipped' }` без
-`session:start`. `drain` — очередь пуста, фасад возвращается к idle-шоу.
-Между ходами пауз нет: следующий `fade` уходит сразу за `session:end`.
-Типы в `apps/server/src/app/ports/facade-gateway.ts`.
-
-Те же команды уходят и в CCS — кнопки группы «Public app controls»
-(`ccs-ids.md`): `CloudControls` реализует тот же порт `FacadeGateway`
-через `execCommand`, `CompositeFacade` в `bootstrap` раздаёт команды TD и
-CCS, поток точек идёт только в TD. `fade` и `session:start` → кнопки
-`WITH_PARAMS` с `params: [JSON {mode, params, durationMs}]`,
-`session:end` → «Session end», `drain` → «Idle» (`COMMAND`). `_id` группы
-и кнопок — константы `ccs-ids.ts`, env переопределяет.
+`x`/`y` ∈ [0, 1], ноль в левом нижнем углу (`y` растёт вверх), `move` не
+чаще 20/с (троттлинг на телефоне). Типы — `facade-gateway.ts`
+(`FacadeCommand`, `FacadeTouch` с `phase`), `CompositeFacade` в
+`bootstrap` раздаёт команды обоим адаптерам, поток — только TD.
 
 `params` по режимам: `comet` → `head` и `tail` (hex ядра кометы и её
 хвоста, оба с колеса цвета), `milky-way` → `width` (индекс ширины кисти
 0–2), `palette` → `palette` (индекс 0–3, см.
-`docs/design/design-system.md` §2). Формат совместим по
-духу с Кутаиси (`events-documentation.md` там), но имена типов новые,
-согласовать с оператором TD до интеграции.
+`docs/design/design-system.md` §2).
 
 ---
 
@@ -282,7 +275,7 @@ true })` запускается только когда `flags.locationRestricti
 - Касания (`screens/touch/session/use-touch-stream.ts`): Pointer Events на
   области фасада, нормализация в [0, 1] относительно неё с нулём в левом
   нижнем углу (`y = 1 − clientY/height`, как UV в TouchDesigner), `touch: 1` на
-  старт и движение (движения не чаще 33 мс, `socket.volatile.emit`),
+  старт и движение (движения не чаще 50 мс = 20/с, `socket.volatile.emit`),
   `touch: 0` на отпускание. Один палец. Локальный след рисуется на canvas
   (`TrailCanvas`): комета рисует только хвост цветом `tail` (ядро `head`
   видно лишь на фасаде), комета и Чумацький шлях гаснут за ~2 с, палитра
@@ -344,7 +337,7 @@ Socket.IO + `/health`), он не раздаёт статику.
 | `GEO_RADIUS_M`                                                                                                  | радиус зоны                                                                   | `100`                                                                   |
 | `GEO_ACCURACY_TOLERANCE_M`                                                                                      | максимум допуска по точности GPS                                              | `30`                                                                    |
 | `GEO_CENTER`                                                                                                    | `lat,lng`; переопределяет координаты из CCS                                   | из логина CCS                                                           |
-| `TD_WS_URL`                                                                                                     | адрес TouchDesigner; пусто — TD отключён                                      | —                                                                       |
+| `TD_WS_URL`                                                                                                     | адрес WebSocket-сервера TouchDesigner; переподключение каждые 5 с бесконечно  | `ws://10.11.68.104:82` (`TD_DEFAULT_URL`); в `offline` — отключён       |
 | `TD_PING_INTERVAL_MS`                                                                                           | интервал ping                                                                 | `30000`                                                                 |
 | `SESSION_MS`                                                                                                    | длительность сеанса                                                           | `40000`                                                                 |
 | `FADE_MS`                                                                                                       | задача `fade` перед каждым сеансом (отсчёт + переход фасада)                  | `5000`                                                                  |

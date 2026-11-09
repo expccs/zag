@@ -151,9 +151,16 @@ describe('SessionService', () => {
     assert.ok(clients.events.includes('u1:start:comet'));
     assert.ok(clients.events.includes('u2:queue:1'));
     assert.equal(facade.commands.at(-1), `session:start:${id}:comet`);
+    assert.equal(service.handleTouch('u1', { ...TOUCH, touch: 0 }), false);
     assert.equal(service.handleTouch('u1', TOUCH), true);
     assert.equal(service.handleTouch('u2', TOUCH), false);
-    assert.equal(facade.touches.length, 1);
+    assert.equal(service.handleTouch('u1', TOUCH), true);
+    assert.equal(service.handleTouch('u1', { ...TOUCH, touch: 0 }), true);
+    assert.equal(service.handleTouch('u1', TOUCH), true);
+    assert.deepEqual(
+      facade.touches.map((touch) => touch.phase),
+      ['begin', 'move', 'end', 'begin'],
+    );
     assert.equal(facade.touches[0].sessionId, first.sessionId);
     assert.equal(facade.touches[0].type, 'touch:event');
 

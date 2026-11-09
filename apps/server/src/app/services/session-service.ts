@@ -10,7 +10,11 @@ import { inject, injectable } from 'tsyringe';
 import { ZagAppState } from '../domain/app-state';
 import { SessionQueue, type QueueTask } from '../domain/session-queue';
 import { CLIENT_GATEWAY, type ClientGateway } from '../ports/client-gateway';
-import { FACADE_GATEWAY, type FacadeGateway } from '../ports/facade-gateway';
+import {
+  FACADE_GATEWAY,
+  type FacadeGateway,
+  type StrokePhase,
+} from '../ports/facade-gateway';
 import { LOGGER, type Logger } from '../ports/logger';
 import { SessionError, type SessionApi } from '../ports/session-api';
 import { SESSION_CONFIG, type SessionConfig } from '../ports/session-config';
@@ -47,6 +51,8 @@ export class SessionService implements SessionApi {
   private readonly queue: SessionQueue<SessionTurnStep>;
   private readonly graceTimers = new Map<string, NodeJS.Timeout>();
   private readonly logger: Logger;
+  /** A finger is down in the running session (stroke `begin` sent). */
+  private strokeOpen = false;
 
   constructor(
     @inject(SESSION_CONFIG) private readonly config: SessionConfig,
@@ -99,14 +105,22 @@ export class SessionService implements SessionApi {
     return removed;
   }
 
-  /** Only the running `session` step accepts touches; the fade does not. */
+  /**
+   * Only the running `session` step accepts touches; the fade does not.
+   * The stroke phase is derived here (shared-modules.md § 5): the first
+   * `touch: 1` opens a stroke, further ones move it, `touch: 0` ends it; a
+   * release without an open stroke is dropped.
+   */
   handleTouch(userId: string, event: TouchEvent): boolean {
     const current = this.queue.currentTask;
     if (!current || current.userId !== userId) return false;
     if (current.payload.step !== 'session') return false;
+    const phase = this.strokePhase(event);
+    if (!phase) return false;
     this.facade.stream({
       type: 'touch:event',
       sessionId: current.id,
+      phase,
       ...event,
     });
     return true;
@@ -137,6 +151,17 @@ export class SessionService implements SessionApi {
     for (const timer of this.graceTimers.values()) clearTimeout(timer);
     this.graceTimers.clear();
     this.queue.clear();
+  }
+
+  private strokePhase(event: TouchEvent): StrokePhase | null {
+    if (event.touch === 1) {
+      const phase: StrokePhase = this.strokeOpen ? 'move' : 'begin';
+      this.strokeOpen = true;
+      return phase;
+    }
+    if (!this.strokeOpen) return null;
+    this.strokeOpen = false;
+    return 'end';
   }
 
   private static task(
@@ -179,6 +204,7 @@ export class SessionService implements SessionApi {
   }
 
   private startSession(task: Task, endsAt: number): void {
+    this.strokeOpen = false;
     const { id: sessionId, userId, durationMs } = task;
     const { mode, params } = task.payload.request;
     this.logger.info('session started', {
@@ -207,6 +233,7 @@ export class SessionService implements SessionApi {
   private finishTask(task: Task, reason: SessionEndReason): void {
     const { step } = task.payload;
     if (step === 'fade' && reason === 'completed') return;
+    this.strokeOpen = false;
     const { id: sessionId, userId } = task;
     this.logger.info('session ended', { userId, sessionId, step, reason });
     this.facade.command({ type: 'session:end', sessionId, reason });

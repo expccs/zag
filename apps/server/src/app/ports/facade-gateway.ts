@@ -38,17 +38,23 @@ export interface DrainCommand {
 export type FacadeCommand =
   FadeCommand | SessionStartCommand | SessionEndCommand | DrainCommand;
 
+/** Where a touch sits in its stroke: finger down, dragging, lifted. */
+export type StrokePhase = 'begin' | 'move' | 'end';
+
 /** Unit coordinates of the protocol: origin bottom-left, `y` grows upwards. */
 export interface FacadeTouch extends TouchEvent {
   type: 'touch:event';
   sessionId: string;
+  phase: StrokePhase;
 }
 
 /**
- * Driven port: the facade renderer (TouchDesigner, shared-modules.md § 5).
- * Commands are buffered until the renderer is reachable and stamped with
- * `timestamp`; the touch stream is fire-and-forget. Implemented by
- * `infrastructure/touch-designer`; an offline adapter only logs.
+ * Driven port: the facade (TouchDesigner, shared-modules.md § 5). Commands
+ * are the stages of a turn; the touch stream is fire-and-forget. The
+ * renderer adapter (`infrastructure/touch-designer`) streams the points,
+ * the CCS adapter (`infrastructure/ccs/cloud-controls.ts`) presses the
+ * command buttons; `CompositeFacade` joins them. An offline adapter only
+ * logs.
  */
 export interface FacadeGateway {
   readonly isConnected: boolean;

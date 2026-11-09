@@ -4,7 +4,7 @@ import { OfflineFacade } from './offline-facade';
 import { TouchDesignerClient } from './touch-designer-client';
 
 export interface FacadeConfig {
-  /** `TD_WS_URL`; `null` disables the renderer. */
+  /** `TD_WS_URL` (default `TD_DEFAULT_URL` online); `null` = log only. */
   url: string | null;
   pingIntervalMs: number;
 }

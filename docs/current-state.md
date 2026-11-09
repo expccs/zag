@@ -61,6 +61,21 @@ Handoff log between agent sessions. Newest entry on top. See the
     Config `controls { groupID, programs }`, env `CCS_PROGRAM_*`;
     `ProgramReference.params` may hold strings. Tests: unit + e2e
     (11 button presses over 3 turns), config.
+  - TouchDesigner link per the agreed contract (`docs/touchdesigner-setup.md`,
+    restored from the original spec): `TouchDesignerClient` now streams
+    only `{ request: 'stream', payload: { type: 'stroke:begin|move|end',
+    point: { x, y } } }` and sends no commands (TD gets them from CCS as
+    device «SR7 Facade Interactive», group `public_app`); `FacadeTouch`
+    carries `phase`, derived in `SessionService.handleTouch`; web
+    throttles moves to 20/s. Bottom-left origin kept. Changes vs the
+    original spec to confirm with the TD team: `fade` comes before the
+    session with `params: [JSON]` (was `[durationMs]` after the session),
+    `session_end` has no reason (CCS `COMMAND` button).
+  - TD address is a project constant: `TD_DEFAULT_URL = ws://10.11.68.104:82`
+    (`touch-designer-client.ts`), default of `TD_WS_URL` online; offline
+    CCS mode keeps the log-only facade. The client retries forever every
+    5 s (`reconnectMs`, no backoff) and warns once per outage, so the
+    link opens by itself when TD comes up. Test added.
 - **Next step:** try on real phones (orientation lock, pointer capture,
   fade timing of the trail), then commit stages 2–4; geo-fence remains.
 - **Blockers / open questions:** the forward arrow on the landscape
