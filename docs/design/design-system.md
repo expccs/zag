@@ -369,7 +369,11 @@ y = 241. Маркер `icons/color-marker.svg`: круг 11.5, обводка `#
 для сравнения; в продакшн идут исходники и SVG.
 
 В `apps/web/public` лежат уменьшенные копии (`sips`): `color-wheel.png`
-600, `facade-bw.jpg` 1600 × 900 (ч/б через Generic Gray Profile),
+600, `facade-bw.jpg` 1600 × 825 — окно кадрирования `Rectangle 5` из
+`47:5934` (`imageTransform`: x 0.1773, y 0.2227, w 0.7149, h 0.6553 →
+`--cropOffset 505 715 -c 1486 2882` на исходнике 4032 × 2268), ч/б через
+Generic Gray Profile; на экране фото лежит под всем фреймом, чёрные
+полосы 126 / 40 поверх,
 `modes/*.jpg` 300, `icons/rotate-phone.png` 400, `icons/swipe-hand.png`,
 `zag-short.png` 240 и `icons/brush-{1,2,3}.svg` — три штриха ширины
 (`Vector 7/8/9` фрейма `34:4171`, экспорт `SVG_STRING`; локальный

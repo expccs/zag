@@ -31,6 +31,9 @@ Handoff log between agent sessions. Newest entry on top. See the
     `interactive/modes.ts` filters the mode cards and guards
     `/touch/:mode` and `/touch/:mode/setup` (hidden modes redirect to the
     list); copy, pickers and trail code of the other two modes stay.
+  - Drawing screen photo re-cut to the Figma `CROP` window of
+    `Rectangle 5` (`47:5934`), `public/facade-bw.jpg` 1600 × 825, now
+    under the whole stage with the bars on top (design-system.md § 9).
 - **Next step:** try on real phones (orientation lock, pointer capture,
   fade timing of the trail), then commit stages 2–4; geo-fence remains.
 - **Blockers / open questions:** the forward arrow on the landscape

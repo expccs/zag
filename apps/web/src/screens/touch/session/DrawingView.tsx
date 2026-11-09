@@ -15,10 +15,12 @@ export interface DrawingViewProps {
 }
 
 /**
- * «Малювання» landscape `29:2078` / `47:5943`: black bars with the logos and
- * the timer badge, the monochrome facade photo in between. Touches on the
- * photo stream to the server (and so to the facade) and leave a local
- * trail in the mode's colours so the user sees what they draw.
+ * «Малювання» landscape `29:2078` / `47:5934`: the monochrome facade photo
+ * (Figma `CROP` window of the 4032 × 2268 source, pre-cropped in
+ * `public/facade-bw.jpg`) fills the whole stage like `Rectangle 5`, the
+ * black bars with the logos and the timer badge lie over it. Touches on
+ * the band between the bars stream to the server (and so to the facade)
+ * and leave a local trail in the mode's colours.
  */
 export const DrawingView = ({ request, endsAt, onTouch }: DrawingViewProps) => {
   const { messages } = useLanguage();
@@ -30,20 +32,20 @@ export const DrawingView = ({ request, endsAt, onTouch }: DrawingViewProps) => {
   });
   return (
     <main className={`${styles.stage} ${styles.drawingStage}`}>
+      <img
+        className={styles.facadeImage}
+        src="/facade-bw.jpg"
+        alt=""
+        width={1600}
+        height={825}
+        draggable={false}
+      />
       <LandscapeBar layout="drawing">
         <span className={styles.badge} role="timer" aria-live="off">
           {messages.touch.drawing.timer}: {formatClock(seconds)}
         </span>
       </LandscapeBar>
       <div ref={surfaceRef} className={styles.facade}>
-        <img
-          className={styles.facadeImage}
-          src="/facade-bw.jpg"
-          alt=""
-          width={1600}
-          height={900}
-          draggable={false}
-        />
         <TrailCanvas ref={trailRef} request={request} />
       </div>
       <footer className={styles.bottom} />
