@@ -30,11 +30,24 @@ const LIVE: Record<ZagFlag, number> = {
 
 class FakeClients implements ClientGateway {
   readonly broadcasts: PublicState[] = [];
+  readonly notified: string[] = [];
   clientsCount = 0;
   closed = false;
 
   broadcastState(state: PublicState): void {
     this.broadcasts.push(state);
+  }
+
+  notifyQueue(userId: string): void {
+    this.notified.push(userId);
+  }
+
+  notifySessionStart(userId: string): void {
+    this.notified.push(userId);
+  }
+
+  notifySessionEnd(userId: string): void {
+    this.notified.push(userId);
   }
 
   close(): void {
@@ -108,6 +121,30 @@ describe('StateSyncService', () => {
 
     service.stop();
     assert.equal(cloud.isConnected, false);
+  });
+
+  it('re-reads the state group on every connect, not only the first', async () => {
+    const group = ccsGroup(LIVE);
+    const { service, cloud, state, clients } = createService([group]);
+    service.start();
+    await flush();
+    await flush();
+    assert.equal(state.publicState.screen, 'interactive');
+    const before = clients.broadcasts.length;
+
+    // CCS flipped Maintenance while we were disconnected: no event was
+    // delivered, only the group content differs on the next read.
+    const { techPause } = PROGRAMS;
+    const maintenance = group.programs.find((p) => p._id === techPause);
+    maintenance!.state = { value: 1 };
+    cloud.emit('connect');
+    await flush();
+    await flush();
+
+    assert.equal(state.publicState.screen, 'maintenance');
+    // One broadcast for the real change; the repeated `synced` is silent.
+    assert.equal(clients.broadcasts.length, before + 1);
+    assert.equal(clients.broadcasts.at(-1)?.screen, 'maintenance');
   });
 
   it('logs and keeps serving when the state group is missing', async () => {

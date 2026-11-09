@@ -8,6 +8,15 @@ import { ConfigLoader } from '../src/infrastructure/config/config';
 import { StructuredLogger } from '../src/infrastructure/logging/structured-logger';
 
 class CcsProbe {
+  static async main(): Promise<void> {
+    try {
+      await CcsProbe.run();
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : error);
+      process.exit(1);
+    }
+  }
+
   static async run(): Promise<void> {
     const { cloud: cloudConfig } = ConfigLoader.load();
     if (cloudConfig.mode === 'offline') {
@@ -36,7 +45,4 @@ class CcsProbe {
   }
 }
 
-CcsProbe.run().catch((error: Error) => {
-  console.error(error.message);
-  process.exit(1);
-});
+void CcsProbe.main();

@@ -1,5 +1,6 @@
 import { ZAG_FLAGS, type ZagFlag } from '@zag/protocol';
 import type { InjectionToken } from 'tsyringe';
+import type { SessionConfig } from '../../app/ports/session-config';
 import {
   CLOUD_MODES,
   type CloudConfig,
@@ -7,6 +8,7 @@ import {
 } from '../ccs/cloud-gateway-factory';
 import { CCS_DEFAULT_URL } from '../ccs/cloud-client';
 import { CCS_STATE_GROUP_ID, CCS_STATE_PROGRAMS } from '../ccs/ccs-ids';
+import type { FacadeConfig } from '../touch-designer/facade-gateway-factory';
 
 export interface StateConfig {
   /** `_id` of the CCS program group holding the app-state switches. */
@@ -26,6 +28,10 @@ export interface ServerConfig {
   trustProxy: boolean;
   cloud: CloudConfig;
   state: StateConfig;
+  /** Queue timing (`SESSION_MS`, `FADE_MS`, `DISCONNECT_GRACE_MS`). */
+  session: SessionConfig;
+  /** TouchDesigner (`TD_WS_URL`, `TD_PING_INTERVAL_MS`). */
+  facade: FacadeConfig;
 }
 
 export const SERVER_CONFIG: InjectionToken<ServerConfig> =
@@ -116,6 +122,23 @@ export class ConfigLoader {
       trustProxy: reader.boolean('TRUST_PROXY', true),
       cloud,
       state: ConfigLoader.readState(reader, cloud.mode),
+      session: ConfigLoader.readSession(reader),
+      facade: ConfigLoader.readFacade(reader),
+    };
+  }
+
+  private static readSession(reader: EnvReader): SessionConfig {
+    return {
+      sessionMs: reader.number('SESSION_MS', 40_000),
+      fadeMs: reader.number('FADE_MS', 5_000),
+      disconnectGraceMs: reader.number('DISCONNECT_GRACE_MS', 10_000),
+    };
+  }
+
+  private static readFacade(reader: EnvReader): FacadeConfig {
+    return {
+      url: reader.string('TD_WS_URL', '') || null,
+      pingIntervalMs: reader.number('TD_PING_INTERVAL_MS', 30_000),
     };
   }
 

@@ -17,6 +17,12 @@ describe('ConfigLoader', () => {
     assert.equal(config.state.groupID, 'offline:state');
     assert.equal(config.state.programs.techPause, 'offline:techPause');
     assert.equal(config.state.initial.interactive, true);
+    assert.deepEqual(config.session, {
+      sessionMs: 40_000,
+      fadeMs: 5_000,
+      disconnectGraceMs: 10_000,
+    });
+    assert.deepEqual(config.facade, { url: null, pingIntervalMs: 30_000 });
   });
 
   it('defaults to live and requires the CCS account', () => {
@@ -48,6 +54,11 @@ describe('ConfigLoader', () => {
       ALLOWED_ORIGINS: 'https://a, https://b',
       TRUST_PROXY: 'false',
       PORT: '9000',
+      SESSION_MS: '150',
+      FADE_MS: '30',
+      TD_WS_URL: 'ws://10.0.0.5:85',
+      TD_PING_INTERVAL_MS: '5000',
+      DISCONNECT_GRACE_MS: '80',
     });
     assert.equal(config.state.groupID, 'g2');
     assert.equal(config.state.programs.schedule, 'p-sched');
@@ -59,6 +70,15 @@ describe('ConfigLoader', () => {
     assert.deepEqual(config.allowedOrigins, ['https://a', 'https://b']);
     assert.equal(config.trustProxy, false);
     assert.equal(config.port, 9000);
+    assert.deepEqual(config.session, {
+      sessionMs: 150,
+      fadeMs: 30,
+      disconnectGraceMs: 80,
+    });
+    assert.deepEqual(config.facade, {
+      url: 'ws://10.0.0.5:85',
+      pingIntervalMs: 5000,
+    });
   });
 
   it('rejects malformed values', () => {
@@ -71,6 +91,7 @@ describe('ConfigLoader', () => {
     bad({ STATE_OVERRIDES: 'foo=true' }, /unknown flag "foo"/);
     bad({ STATE_OVERRIDES: 'schedule=yes' }, /schedule must be true\|false/);
     bad({ PORT: 'abc' }, /PORT must be a number/);
+    bad({ SESSION_MS: 'soon' }, /SESSION_MS must be a number/);
     bad({ TRUST_PROXY: '1' }, /TRUST_PROXY must be true\|false/);
   });
 });

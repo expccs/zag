@@ -10,8 +10,12 @@ import { ZagAppState } from './app/domain/app-state';
 import { APP_INFO } from './app/ports/app-info';
 import { CLIENT_GATEWAY } from './app/ports/client-gateway';
 import { CLOUD_GATEWAY } from './app/ports/cloud-gateway';
+import { FACADE_GATEWAY } from './app/ports/facade-gateway';
 import { LOGGER, type Logger } from './app/ports/logger';
+import { SESSION_API } from './app/ports/session-api';
+import { SESSION_CONFIG } from './app/ports/session-config';
 import { HealthService } from './app/services/health-service';
+import { SessionService } from './app/services/session-service';
 import { StateSyncService } from './app/services/state-sync-service';
 import { CloudGatewayFactory } from './infrastructure/ccs/cloud-gateway-factory';
 import {
@@ -25,6 +29,7 @@ import {
 } from './infrastructure/http/health-http-server';
 import { StructuredLogger } from './infrastructure/logging/structured-logger';
 import { ZagSocketServer } from './infrastructure/socket/socket-server';
+import { FacadeGatewayFactory } from './infrastructure/touch-designer/facade-gateway-factory';
 
 const SHUTDOWN_TIMEOUT_MS = 5_000;
 
@@ -59,15 +64,19 @@ export class Application {
         version,
         allowedOrigins: config.allowedOrigins,
         ccsMode: config.cloud.mode,
+        facade: config.facade.url ? 'touchdesigner' : 'offline',
       });
     });
     container.resolve(StateSyncService).start();
+    container.resolve(FACADE_GATEWAY).connect();
   }
 
   stop(signal: string): void {
     const { container } = this;
     this.logger.info('shutting down', { signal });
     container.resolve(StateSyncService).stop();
+    container.resolve(SessionService).stop();
+    container.resolve(FACADE_GATEWAY).close();
     container.resolve(CLIENT_GATEWAY).close();
     this.httpServer.close(() => process.exit(0));
     setTimeout(() => process.exit(1), SHUTDOWN_TIMEOUT_MS).unref();
@@ -90,6 +99,7 @@ export class Application {
     container.register(APP_INFO, {
       useValue: { version, ccsMode: config.cloud.mode },
     });
+    container.register(SESSION_CONFIG, { useValue: config.session });
     container.register(CLOUD_GATEWAY, {
       useFactory: instanceCachingFactory(Application.provideCloud),
     });
@@ -102,7 +112,12 @@ export class Application {
     container.register(CLIENT_GATEWAY, {
       useFactory: instanceCachingFactory(Application.provideClients),
     });
+    container.register(FACADE_GATEWAY, {
+      useFactory: instanceCachingFactory(Application.provideFacade),
+    });
     container.register(HealthService, { useClass: HealthService }, scoped);
+    container.register(SessionService, { useClass: SessionService }, scoped);
+    container.register(SESSION_API, { useToken: SessionService });
     container.register(
       StateSyncService,
       { useClass: StateSyncService },
@@ -156,6 +171,12 @@ export class Application {
     });
   }
 
+  private static provideFacade(container: DependencyContainer) {
+    const config = container.resolve(SERVER_CONFIG);
+    const logger = container.resolve(LOGGER).child({ module: 'facade' });
+    return FacadeGatewayFactory.create(config.facade, logger);
+  }
+
   private static provideClients(container: DependencyContainer) {
     const config = container.resolve(SERVER_CONFIG);
     const state = container.resolve(ZagAppState);
@@ -164,6 +185,7 @@ export class Application {
       trustProxy: config.trustProxy,
       logger: container.resolve(LOGGER),
       state: () => state.publicState,
+      sessions: () => container.resolve(SESSION_API),
     });
   }
 }

@@ -72,11 +72,20 @@ export interface SessionRequest {
 export type SessionErrorCode =
   'ENOTALLOWED' | 'EBADMODE' | 'EQUEUED' | 'EINTERNAL';
 
-export interface SessionTicket {
-  sessionId: string;
+/**
+ * Place in the queue. `position: 0` means the user's turn is on: the
+ * facade is fading in and the session starts in `waitMs` (the countdown).
+ * Otherwise `position` counts the users ahead and `waitMs` includes their
+ * fades and sessions.
+ */
+export interface QueuePlace {
   waitMs: number;
-  /** 0 means the session started immediately. */
   position: number;
+}
+
+export interface SessionTicket extends QueuePlace {
+  sessionId: string;
+  /** Length of the drawing session itself (after the fade). */
   durationMs: number;
 }
 
@@ -87,11 +96,6 @@ export type SessionRequestResult =
 export interface SessionCancelResult {
   success: true;
   removed: boolean;
-}
-
-export interface QueuePlace {
-  waitMs: number;
-  position: number;
 }
 
 export interface SessionInfo {

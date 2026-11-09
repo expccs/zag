@@ -11,18 +11,24 @@
 apps/server/src/
 ├── app/                         # ядро: домен, порты, use cases
 │   ├── domain/
-│   │   └── app-state.ts         # AppState<F>, ZagAppState, resolveScreen
+│   │   ├── app-state.ts         # AppState<F>, ZagAppState, resolveScreen
+│   │   └── session-queue.ts     # SessionQueue<T>, QueueError: очередь ходов (fade → session)
 │   ├── ports/                   # интерфейс + его InjectionToken
 │   │   ├── cloud-gateway.ts     # CloudGateway / CLOUD_GATEWAY, типы программ, CloudEmitter
-│   │   ├── client-gateway.ts    # ClientGateway / CLIENT_GATEWAY
+│   │   ├── client-gateway.ts    # ClientGateway / CLIENT_GATEWAY: broadcast + notify* по userId
+│   │   ├── session-api.ts       # SessionApi / SESSION_API (driving port), SessionError
+│   │   ├── session-config.ts    # SessionConfig / SESSION_CONFIG: sessionMs, fadeMs, grace
+│   │   ├── facade-gateway.ts    # FacadeGateway / FACADE_GATEWAY: команды и поток в TouchDesigner
 │   │   ├── logger.ts            # Logger / LOGGER
 │   │   └── app-info.ts          # AppInfo / APP_INFO: version, ccsMode
 │   └── services/                # use cases, @injectable()
 │       ├── state-sync-service.ts # CCS ⇄ AppState ⇄ клиенты
-│       └── health-service.ts    # отчёт /health
+│       ├── session-service.ts   # очередь сеансов: request/cancel/touch, grace, abort
+│       └── health-service.ts    # отчёт /health (+ sessions)
 ├── infrastructure/              # адаптеры портов
 │   ├── ccs/                     # CloudClient, FakeCloudClient, CloudGatewayFactory, ccs-ids
-│   ├── socket/socket-server.ts  # ZagSocketServer implements ClientGateway
+│   ├── socket/socket-server.ts  # ZagSocketServer implements ClientGateway; session:*, touch:event → SessionApi
+│   ├── touch-designer/          # TouchDesignerClient (ws), OfflineFacade, FacadeGatewayFactory
 │   ├── http/health-http-server.ts # HealthHttpServer, HTTP_SERVER
 │   ├── logging/structured-logger.ts
 │   └── config/config.ts         # ConfigLoader: env → ServerConfig, SERVER_CONFIG
@@ -36,7 +42,7 @@ apps/server/src/
 всё. Правило закреплено в `apps/server/eslint.config.js` через
 `no-restricted-imports` для `src/app/**`: запрещены
 `**/infrastructure/**`, `bootstrap`, `socket.io`, `socket.io-client`,
-`node:http`. Тесты (`*.test.ts`) могут пересекать границу ради фейков
+`node:http`, `ws`. Тесты (`*.test.ts`) могут пересекать границу ради фейков
 (`FakeCloudClient`).
 
 Чтобы добавить внешнюю систему (TouchDesigner, геозона по IP и т.п.):
@@ -80,7 +86,58 @@ apps/server/src/
 
 `Application.main()` → `ConfigLoader.load()` → `createContainer` →
 `start()`: `httpServer.listen`, `StateSyncService.start()` (подключение к
-CCS в фоне с ретраями логина, полный `getPrograms` при каждом
-(ре)коннекте, `state:update` всем клиентам на каждое изменение флагов).
+CCS в фоне с ретраями логина; на каждом событии `connect` — чтение группы
+«App state» через `getPrograms` и `state.sync`; `state:update` всем
+клиентам только когда публичное состояние реально изменилось).
 `stop(signal)`: закрыть CCS, Socket.IO, http; `process.exit` по таймауту
 5 с.
+
+## Очередь сеансов
+
+`SessionQueue<T>` (домен) — развитие `reference/session-queue.ts`: очередь
+**ходов**. Ход — цепочка задач одного пользователя, которые идут встык:
+`enqueue(turn)` принимает массив задач с одним `userId`; первая стартует
+сразу, если очередь пуста. Пауз (`gapMs`) больше нет — их место заняла
+задача `fade` (как `Fade` 5 с в tv-tower-back). События `start` /
+`finish` на каждую задачу, `update` (по одному элементу на ждущего
+пользователя, `{ userId, waitMs, position }`), `drain` — через
+`queueMicrotask`, чтобы ack запроса ушёл раньше. `waitMs` — время до
+старта последней задачи хода (сеанса); `position: 0` — ход уже идёт.
+`remove(userId)` снимает все задачи пользователя и пропускает текущую,
+если она его; `abort()` тихо сбрасывает ждущих (возвращает их `userId`)
+и пропускает текущую задачу.
+
+`SessionService` (use case, `SessionApi`):
+
+- `request(userId, { mode, params })` → `ENOTALLOWED` вне `interactive`,
+  `EBADMODE`, `EQUEUED`; иначе ставит ход `[fade(FADE_MS), session(SESSION_MS)]`
+  с общим `sessionId` и отвечает `{ sessionId, waitMs, position, durationMs }`
+  (`durationMs` — сеанс; `position: 0`, `waitMs ≈ FADE_MS` — отсчёт).
+- `start(fade)` → TD `fade`, клиенту `queue:update { waitMs: FADE_MS, position: 0 }`;
+  `start(session)` → TD `session:start`, клиенту `session:start`;
+  `finish(session, *)` и `finish(fade, skipped)` → TD `session:end`,
+  клиенту `session:end`; `finish(fade, completed)` — ничего, следом идёт
+  сеанс; `drain` → TD `drain`.
+- `cancel(userId)`; `handleTouch(userId, event)` — `true` только для
+  пользователя текущего сеанса на шаге `session`, событие уходит в TD
+  потоком (`stream`, без буфера).
+- `userDisconnected` / `userConnected` — grace `disconnectGraceMs`: место
+  держится, пока не вернулась хотя бы одна вкладка; по истечении —
+  `cancel`.
+- `state.change` → `screen !== 'interactive'` → `abort()`: ждущие получают
+  `session:end { skipped }` сразу, текущая задача — через очередь.
+- `summary` → `/health.sessions: { active, waiting }`; `/health.facade:
+  { connected, dropped }` — состояние TD и число отброшенных касаний.
+
+`FacadeGateway` (порт) → `infrastructure/touch-designer`:
+`TouchDesignerClient` (перенос `reference/touch-designer-client.ts`:
+реконнект с backoff, контроль pong, буфер 32 команд, поток без буфера)
+при заданном `TD_WS_URL`, иначе `OfflineFacade` (команды в лог).
+Выбор — `FacadeGatewayFactory.create(config.facade, logger)`;
+`Application.start` вызывает `connect()`, `stop` — `close()`.
+
+`ZagSocketServer` держит `Map<userId, Set<Socket>>`: `notify*` доходят до
+всех вкладок пользователя, `userDisconnected` вызывается, когда закрылась
+последняя. `SessionApi` передаётся адаптеру ленивым геттером
+(`sessions: () => container.resolve(SESSION_API)`), иначе цикл
+`ClientGateway → SessionService → ClientGateway`.

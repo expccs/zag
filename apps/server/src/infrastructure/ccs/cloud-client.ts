@@ -243,9 +243,21 @@ export class CloudClient extends CloudEmitter implements CloudGateway {
 
   private recover(): void {
     if (this.closed || this.refreshing) return;
-    this.refreshing = this.refreshToken().finally(() => {
+    this.refreshing = this.refresh();
+  }
+
+  // One refresh at a time; a failure (closed meanwhile, wrong project) is
+  // logged, not thrown, since nobody awaits this background task.
+  private async refresh(): Promise<void> {
+    try {
+      await this.refreshToken();
+    } catch (error) {
+      this.logger.warn('ccs re-login failed', {
+        error: CloudClient.describeError(error),
+      });
+    } finally {
       this.refreshing = null;
-    });
+    }
   }
 
   private async refreshToken(): Promise<void> {

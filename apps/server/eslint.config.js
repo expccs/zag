@@ -24,7 +24,7 @@ module.exports = [
               message: 'src/app depends on its ports only (hexagonal).',
             },
             {
-              group: ['socket.io', 'socket.io-client', 'node:http'],
+              group: ['socket.io', 'socket.io-client', 'node:http', 'ws'],
               message: 'I/O belongs to src/infrastructure adapters.',
             },
           ],

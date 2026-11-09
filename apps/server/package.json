@@ -10,7 +10,7 @@
     "start": "node dist/bootstrap.js",
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx --test 'src/**/*.test.ts'",
+    "test": "tsx --test --test-timeout=20000 'src/**/*.test.ts'",
     "lint": "eslint . && prettier --check .",
     "fix": "eslint . --fix && prettier --write .",
     "ccs:probe": "tsx --env-file-if-exists=../../.env scripts/ccs-probe.ts"
@@ -20,10 +20,12 @@
     "reflect-metadata": "^0.2.2",
     "socket.io": "^4.8.4",
     "socket.io-client": "^4.8.4",
-    "tsyringe": "^4.10.0"
+    "tsyringe": "^4.10.0",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
+    "@types/ws": "^8.18.2",
     "@zag/config": "*",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3"

@@ -2,9 +2,16 @@ import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import type { AddressInfo } from 'node:net';
 import { io as connect, type Socket } from 'socket.io-client';
-import { AUTH_ERROR, type PublicState } from '@zag/protocol';
-import { HealthHttpServer } from '../http/health-http-server';
+import {
+  AUTH_ERROR,
+  type PublicState,
+  type SessionRequest,
+  type SessionTicket,
+  type TouchEvent,
+} from '@zag/protocol';
 import type { LogFields } from '../../app/ports/logger';
+import { SessionError, type SessionApi } from '../../app/ports/session-api';
+import { HealthHttpServer } from '../http/health-http-server';
 import { StructuredLogger } from '../logging/structured-logger';
 import { ZagSocketServer } from './socket-server';
 
@@ -24,6 +31,44 @@ const STATE: PublicState = {
   screen: 'interactive',
   synced: true,
 };
+const TICKET: SessionTicket = {
+  sessionId: 's1',
+  waitMs: 0,
+  position: 0,
+  durationMs: 40_000,
+};
+
+/** Records calls; `request` fails for mode `nope`, throws raw for `boom`. */
+class FakeSessionApi implements SessionApi {
+  readonly calls: string[] = [];
+  readonly touches: TouchEvent[] = [];
+
+  request(userId: string, request: SessionRequest): SessionTicket {
+    this.calls.push(`request:${userId}:${request.mode}`);
+    if ((request.mode as string) === 'nope') throw new SessionError('EBADMODE');
+    if ((request.mode as string) === 'boom') throw new Error('kaboom');
+    return TICKET;
+  }
+
+  cancel(userId: string): boolean {
+    this.calls.push(`cancel:${userId}`);
+    return true;
+  }
+
+  handleTouch(userId: string, event: TouchEvent): boolean {
+    this.touches.push(event);
+    this.calls.push(`touch:${userId}`);
+    return true;
+  }
+
+  userConnected(userId: string): void {
+    this.calls.push(`connected:${userId}`);
+  }
+
+  userDisconnected(userId: string): void {
+    this.calls.push(`disconnected:${userId}`);
+  }
+}
 
 const waitFor = <T>(
   check: () => T | undefined,
@@ -56,8 +101,15 @@ const connectClient = (url: string, auth: object): Promise<Socket> =>
     });
   });
 
+const closed = (socket: Socket): Promise<void> =>
+  new Promise((resolve) => {
+    socket.once('disconnect', () => resolve());
+    socket.close();
+  });
+
 describe('socket server', () => {
   const records: LogRecord[] = [];
+  const sessions = new FakeSessionApi();
   let server: ZagSocketServer;
   let url = '';
 
@@ -73,6 +125,8 @@ describe('socket server', () => {
         clients: 0,
         ccs: { mode: 'offline', connected: false, projectUID: null },
         state: STATE,
+        sessions: { active: null, waiting: 0 },
+        facade: { connected: true, dropped: 0 },
       }),
     });
     server = new ZagSocketServer(httpServer, {
@@ -80,6 +134,7 @@ describe('socket server', () => {
       trustProxy: true,
       logger,
       state: () => STATE,
+      sessions: () => sessions,
     });
     await new Promise<void>((resolve) => {
       httpServer.listen(0, () => resolve());
@@ -167,7 +222,100 @@ describe('socket server', () => {
     });
     server.broadcastState(next);
     assert.deepEqual(await broadcast, next);
-    socket.close();
+    await closed(socket);
+  });
+
+  it('routes session:request / cancel / touch to the session API', async () => {
+    const user = 'user-routing-000001';
+    const calls = () => sessions.calls.filter((call) => call.includes(user));
+    const socket = await connectClient(url, { userId: user });
+    const ok = await socket.emitWithAck('session:request', {
+      mode: 'comet',
+      params: { color: '#ff4848' },
+    });
+    assert.deepEqual(ok, { success: true, ...TICKET });
+    const bad = await socket.emitWithAck('session:request', { mode: 'nope' });
+    assert.deepEqual(bad, { success: false, code: 'EBADMODE' });
+    const boom = await socket.emitWithAck('session:request', { mode: 'boom' });
+    assert.deepEqual(boom, { success: false, code: 'EINTERNAL' });
+    const cancelled = await socket.emitWithAck('session:cancel');
+    assert.deepEqual(cancelled, { success: true, removed: true });
+
+    socket.emit('touch:event', { x: 2, y: 0, touch: 1, swipe: 0 } as never);
+    socket.emit('touch:event', {
+      x: 0.25,
+      y: 0.75,
+      touch: 1,
+      swipe: 0,
+      direction: 'none',
+    });
+    await waitFor(() => sessions.touches.length === 1 || undefined);
+    assert.deepEqual(sessions.touches[0], {
+      x: 0.25,
+      y: 0.75,
+      touch: 1,
+      swipe: 0,
+      direction: 'none',
+    });
+    assert.deepEqual(calls(), [
+      `connected:${user}`,
+      `request:${user}:comet`,
+      `request:${user}:nope`,
+      `request:${user}:boom`,
+      `cancel:${user}`,
+      `touch:${user}`,
+    ]);
+    const failed = records.find((r) => r.message === 'session request failed');
+    assert.equal(failed?.level, 'error');
+    await closed(socket);
+    await waitFor(
+      () => sessions.calls.includes(`disconnected:${user}`) || undefined,
+    );
+  });
+
+  it('notifies every tab of a user, and only that user', async () => {
+    const user = 'user-tabs-00000001';
+    const other = 'user-other-000001';
+    const [a1, a2, b] = await Promise.all([
+      connectClient(url, { userId: user }),
+      connectClient(url, { userId: user }),
+      connectClient(url, { userId: other }),
+    ]);
+    const got: string[] = [];
+    const listen = (socket: Socket, name: string) => {
+      socket.on('queue:update', (p) => got.push(`${name}:queue:${p.position}`));
+      socket.on('session:start', (i) => got.push(`${name}:start:${i.mode}`));
+      socket.on('session:end', (e) => got.push(`${name}:end:${e.reason}`));
+    };
+    listen(a1, 'a1');
+    listen(a2, 'a2');
+    listen(b, 'b');
+
+    server.notifyQueue(user, { waitMs: 10, position: 2 });
+    server.notifySessionStart(other, {
+      sessionId: 's2',
+      mode: 'palette',
+      durationMs: 1,
+      endsAt: 1,
+    });
+    server.notifySessionEnd(user, { reason: 'completed' });
+    await waitFor(() => (got.length === 5 ? got : undefined));
+    assert.deepEqual(got.sort(), [
+      'a1:end:completed',
+      'a1:queue:2',
+      'a2:end:completed',
+      'a2:queue:2',
+      'b:start:palette',
+    ]);
+
+    // The user is "disconnected" only when the last tab goes.
+    await closed(a1);
+    assert.equal(sessions.calls.includes(`disconnected:${user}`), false);
+    await closed(a2);
+    await waitFor(
+      () => sessions.calls.includes(`disconnected:${user}`) || undefined,
+    );
+    await closed(b);
   });
 });
 
@@ -183,5 +331,19 @@ describe('ZagSocketServer.resolveClientIp', () => {
       ZagSocketServer.resolveClientIp(request({}), true),
       '10.0.0.1',
     );
+  });
+});
+
+describe('ZagSocketServer.isTouchEvent', () => {
+  it('accepts unit coordinates, bits and known directions only', () => {
+    const valid = { x: 0, y: 1, touch: 0, swipe: 1, direction: 'left' };
+    assert.equal(ZagSocketServer.isTouchEvent(valid), true);
+    assert.equal(ZagSocketServer.isTouchEvent({ ...valid, x: 1.01 }), false);
+    assert.equal(ZagSocketServer.isTouchEvent({ ...valid, touch: 2 }), false);
+    assert.equal(
+      ZagSocketServer.isTouchEvent({ ...valid, direction: 'up' }),
+      false,
+    );
+    assert.equal(ZagSocketServer.isTouchEvent(null), false);
   });
 });

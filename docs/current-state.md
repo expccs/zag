@@ -5,6 +5,89 @@ Handoff log between agent sessions. Newest entry on top. See the
 
 ---
 
+- **Timestamp:** 2026-11-09T12:30:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:** Fade task + TouchDesigner (stage 2; uncommitted, on
+  `master`; shared-modules § 1.5 / § 4 / § 5 / § 7, server-architecture
+  «Очередь сеансов»):
+  - `SessionQueue` now queues **turns** (`enqueue(tasks[])`, one user per
+    turn, tasks back to back, no `gapMs`); `waits()` is per user,
+    `abort()` drops waiting turns and skips the current task. Every
+    `SessionService.request` enqueues `[fade(FADE_MS=5000), session]`
+    with one `sessionId`: fade start → TD `fade` + client `queue:update
+    { waitMs: FADE_MS, position: 0 }` (countdown); session start → TD
+    `session:start` + `session:start`; skipped fade → `session:end`
+    like a session. Touches accepted only on the `session` step.
+    `SESSION_GAP_MS` replaced by `FADE_MS` (`.env.example`, config).
+  - New port `app/ports/facade-gateway.ts` (`FacadeGateway`,
+    `FACADE_GATEWAY`, command / touch message types) and adapters
+    `infrastructure/touch-designer/`: `TouchDesignerClient` (from
+    reference, `ws` dep added), `OfflineFacade` (logs commands when
+    `TD_WS_URL` is empty), `FacadeGatewayFactory`. Wired in
+    `bootstrap.ts` (`connect` on start, `close` on stop); `/health.facade
+    { connected, dropped }`; eslint forbids `ws` in `src/app`.
+  - Tests: queue (6), service with `FakeFacade`, TD client against a
+    `ws` server, bootstrap e2e asserts the exact TD message sequence
+    (fade → session:start → touch → session:end → … → drain). 56 tests
+    green; turbo typecheck + lint + build OK for protocol / web / server.
+- **Next step:** geo-fence (port + adapter + `geo:check`), then commit
+  stage 2; web side of the queue (countdown on `position: 0`) is stage 4.
+- **Blockers / open questions:** TD message names (`fade`, `session:*`,
+  `drain`) and `FADE_MS` = 5 s to confirm with the TouchDesigner
+  operator; CCS «Public app controls» (`sessionStart` / `sessionEnd`)
+  still not triggered — who owns that, CCS or TD?
+
+---
+
+- **Timestamp:** 2026-11-09T10:00:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:** Session queue on the server (stage 2; uncommitted, on
+  `master`; server-architecture.md «Очередь сеансов»):
+  - `app/domain/session-queue.ts` (from reference; fixed: cancelling the
+    last waiting user during the gap no longer runs `undefined`, queue
+    settles idle + `drain`), ports `session-api.ts` (`SessionApi`,
+    `SessionError`, `SESSION_API`), `session-config.ts`; `ClientGateway`
+    gained `notifyQueue` / `notifySessionStart` / `notifySessionEnd`.
+  - `app/services/session-service.ts`: request / cancel / handleTouch
+    gate / grace timers / abort on screen change; `summary` in `/health`.
+  - `infrastructure/socket/socket-server.ts`: per-user socket map,
+    `session:request` / `session:cancel` / `touch:event` handlers with
+    payload validation, lazy `sessions: () => SessionApi` (breaks the
+    ClientGateway ⇄ SessionService cycle). Config `session`
+    (`SESSION_MS` 40000, `SESSION_GAP_MS` 5000, `DISCONNECT_GRACE_MS` 10000) + `.env.example`.
+  - Tests: queue, service, socket routing / fan-out, end-to-end over
+    Socket.IO in `bootstrap.test.ts` (3 clients, grace, tech pause abort,
+    grace expiry). 50 tests green; `--test-timeout=20000` in the test
+    script. Build + offline smoke OK.
+- **Next step:** TouchDesigner port + adapter (`session:start` /
+  `session:end` / `drain` commands, `touch:event` stream), then geo-fence;
+  web side of the queue is stage 4.
+- **Blockers / open questions:** CCS «Public app controls» buttons
+  (`sessionStart` / `sessionEnd`, ccs-ids.ts) are not triggered on
+  session start/end — confirm with Expolight whether CCS or TD owns that.
+
+---
+
+- **Timestamp:** 2026-11-09T08:00:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:** `StateSyncService` now reads the CCS «App state» group
+  on **every** `connect` event (first login, auto-reconnect, manual
+  re-login after `io server disconnect` / rejected token). Before, the
+  resync hung on the Manager `reconnect` event, which the manual re-login
+  path never fires, so flags flipped during an outage were missed.
+  `publish` skips broadcasts identical to the last published state (a
+  resync that changes nothing stays silent). Test «re-reads the state
+  group on every connect» added; 39 tests green. Promise chains in
+  server code replaced with `async`/`await` + `try/catch` (user rule, see
+  memory `no-promise-chains`): `StateSyncService.sync` / `connect`,
+  `CloudClient.refresh` (re-login failure now logged instead of an
+  unhandled rejection), `ccs-probe` entry. Docs: shared-modules § 2
+  item 3, § 9; server-architecture lifecycle.
+- **Next step:** verify against live CCS in `CCS_MODE=dry-run` (needs
+  `CCS_LOGIN` / `CCS_PASSWORD` in `.env`; local `.env` is offline).
+
+---
+
 - **Timestamp:** 2026-11-09T07:00:00Z
 - **Agent / model:** Claude Fable 5.1
 - **What changed:** `apps/server` re-laid out as hexagonal architecture
@@ -43,7 +126,7 @@ Handoff log between agent sessions. Newest entry on top. See the
 - **What changed:** Header logo is full-bleed (uncommitted, on `master`):
   `apps/web/src/components/zag-header.module.css` breaks the strip out of
   the centred column and its padding (`width: 100vw; margin-left:
-  calc(50% - 50vw)`), height follows the 374 × 34 aspect (≈ 36 px at 393)
+calc(50% - 50vw)`), height follows the 374 × 34 aspect (≈ 36 px at 393)
   with a 48 px cap and `object-fit: cover`; `styles/global.css` adds
   `overflow-x: clip` on `body` so a desktop scrollbar does not add a
   horizontal one. Verified over CDP at 393 and 360 px on `/`, `/mission`,
@@ -58,7 +141,7 @@ Handoff log between agent sessions. Newest entry on top. See the
   blocks `gesturestart` / multi-touch `touchmove` (Safari tab ignores
   `user-scalable=no`) and `contextmenu` on coarse pointers.
   Proportional scaling (design-system.md § 1): `html { font-size:
-  min(calc(100vmin / 393 * 16), 17.92px) }` and every px in the web CSS
+min(calc(100vmin / 393 * 16), 17.92px) }` and every px in the web CSS
   modules converted to rem (px / 16, 144 values; footer logos sized in rem
   instead of HTML attributes). Verified over CDP at 320 / 360 / 393 / 430
   / 1200 px: root font and all measured heights scale by width / 393, cap

@@ -1,4 +1,4 @@
-import type { ZagFlag } from '@zag/protocol';
+import type { PublicState, ZagFlag } from '@zag/protocol';
 import { inject, injectable } from 'tsyringe';
 import { ZagAppState } from '../domain/app-state';
 import { CLIENT_GATEWAY, type ClientGateway } from '../ports/client-gateway';
@@ -8,15 +8,18 @@ import { LOGGER, type Logger } from '../ports/logger';
 /**
  * Use case: keep the app state in step with CCS and the clients in step
  * with the app state. CCS is joined in the background with login retries,
- * so a CCS outage never blocks serving clients; every (re)connect does a
- * full `getPrograms` resync because `programStateChange` events missed
- * while offline are not replayed.
+ * so a CCS outage never blocks serving clients. On **every** `connect`
+ * event (first login, socket.io auto-reconnect, manual re-login after a
+ * server-side disconnect or a rejected token) the «App state» group is
+ * read with `getPrograms` and applied, because `programStateChange`
+ * events missed while offline are not replayed.
  */
 @injectable()
 export class StateSyncService {
   private readonly cloudLogger: Logger;
   private readonly stateLogger: Logger;
   private started = false;
+  private published: PublicState | null = null;
 
   constructor(
     @inject(CLOUD_GATEWAY) private readonly cloud: CloudGateway,
@@ -32,26 +35,30 @@ export class StateSyncService {
     if (this.started) throw new Error('StateSyncService already started');
     this.started = true;
     this.wire();
-    this.cloud
-      .connect()
-      .then(() => this.sync())
-      .catch((error: Error) => {
-        this.cloudLogger.error('ccs connect failed', { error });
-      });
+    void this.connect();
   }
 
   stop(): void {
     this.cloud.close();
   }
 
-  /** Pulls the program groups from CCS and applies them to the state. */
-  sync(): Promise<void> {
-    return this.cloud
-      .getPrograms()
-      .then((groups) => this.state.sync(groups))
-      .catch((error: Error) => {
-        this.stateLogger.error('state sync failed', { error });
-      });
+  /** Reads the program groups from CCS and applies the state group. */
+  async sync(): Promise<void> {
+    this.stateLogger.info('state sync', { groupID: this.state.groupID });
+    try {
+      const groups = await this.cloud.getPrograms();
+      this.state.sync(groups);
+    } catch (error) {
+      this.stateLogger.error('state sync failed', { error });
+    }
+  }
+
+  private async connect(): Promise<void> {
+    try {
+      await this.cloud.connect();
+    } catch (error) {
+      this.cloudLogger.error('ccs connect failed', { error });
+    }
   }
 
   private wire(): void {
@@ -65,13 +72,16 @@ export class StateSyncService {
         timezone: data.timezone,
       });
     });
-    cloud.on('connect', () => cloudLogger.info('ccs connected'));
+    cloud.on('connect', () => {
+      cloudLogger.info('ccs connected');
+      void this.sync();
+    });
     cloud.on('disconnect', (reason) => {
       cloudLogger.warn('ccs disconnected', { reason });
     });
+    // Manager-level event; the socket `connect` that follows does the sync.
     cloud.on('reconnect', (attempt) => {
       cloudLogger.info('ccs reconnected', { attempt });
-      this.sync();
     });
     cloud.on('stateChange', (change) => {
       cloudLogger.info('ccs program state', {
@@ -84,9 +94,20 @@ export class StateSyncService {
     state.on('change', (_flags, changed) => this.publish('change', changed));
   }
 
+  // A resync that found nothing new emits `synced` again; clients only
+  // hear about actual differences.
   private publish(reason: string, changed: ZagFlag[]): void {
     const state = this.state.publicState;
+    if (StateSyncService.isSame(this.published, state)) return;
+    this.published = state;
     this.stateLogger.info('state update', { reason, changed, ...state });
     this.clients.broadcastState(state);
+  }
+
+  private static isSame(a: PublicState | null, b: PublicState): boolean {
+    if (a === null) return false;
+    if (a.screen !== b.screen || a.synced !== b.synced) return false;
+    const flags = Object.keys(b.flags) as ZagFlag[];
+    return flags.every((flag) => a.flags[flag] === b.flags[flag]);
   }
 }

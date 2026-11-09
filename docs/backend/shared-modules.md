@@ -29,9 +29,9 @@
 
 | Аспект            | tv-tower-back                                                                                                                                              | kutaisi-public                                                                              | Унифицировано                                                                                                                                                                                                                                                                                                          |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Учётные данные    | в коде `application.ts` (`cloudCreds`)                                                                                                                     | в коде класса (`login`, `password`, `project` захардкожены)                                 | учётка через env `CCS_LOGIN`, `CCS_PASSWORD`; id проекта — константа `CCS_PROJECT_ID` (`apps/server/src/ccs-ids.ts`) |
+| Учётные данные    | в коде `application.ts` (`cloudCreds`)                                                                                                                     | в коде класса (`login`, `password`, `project` захардкожены)                                 | учётка через env `CCS_LOGIN`, `CCS_PASSWORD`; id проекта — константа `CCS_PROJECT_ID` (`apps/server/src/ccs-ids.ts`)                                                                                                                                                                                                   |
 | HTTP              | axios                                                                                                                                                      | axios                                                                                       | встроенный `fetch` (Node 20+), без зависимости                                                                                                                                                                                                                                                                         |
-| Логин             | `POST /api/user/projects` → первый проект → `POST /api/user/app/auth`                                                                                      | то же                                                                                       | то же, но проект — константа `CCS_PROJECT_ID`, сверяется со списком `/api/user/projects`: пустой список или чужой `projectUID` → `CloudProjectError` без повторов логина                                                                                                                                |
+| Логин             | `POST /api/user/projects` → первый проект → `POST /api/user/app/auth`                                                                                      | то же                                                                                       | то же, но проект — константа `CCS_PROJECT_ID`, сверяется со списком `/api/user/projects`: пустой список или чужой `projectUID` → `CloudProjectError` без повторов логина                                                                                                                                               |
 | Сокет             | `socket.io-client` на `/users`, `path: /socket`, websocket only, бесконечный reconnect 1–5 с                                                               | то же                                                                                       | то же                                                                                                                                                                                                                                                                                                                  |
 | Подписка на state | `joinRoom` + `programStateChange` → событие `stateChange`                                                                                                  | то же                                                                                       | то же, но слушатель `programStateChange` регистрируется один раз, а не на каждом `connect`                                                                                                                                                                                                                             |
 | `reconnect`       | слушается на `socket` — в socket.io v4 это событие **Manager**, на сокете не срабатывает (мёртвый код)                                                     | то же                                                                                       | `socket.io.on('reconnect')`                                                                                                                                                                                                                                                                                            |
@@ -84,10 +84,10 @@ URL `EXTERNAL_WS_URL`, по умолчанию `ws://10.11.113.101:85`). tv-towe
 
 | Аспект                       | tv-tower-back                                                                                                  | kutaisi-public                                                 | Унифицировано                                                                                            |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Пауза между пользователями   | фейковая задача `Fade` 5 с без `user`                                                                          | фейковая задача `fade` 15 с                                    | опция `gapMs`, фейковых задач нет; TD получает `session:end` и `drain`                                   |
+| Пауза между пользователями   | фейковая задача `Fade` 5 с без `user`                                                                          | фейковая задача `fade` 15 с                                    | ход пользователя = цепочка задач `fade` (`FADE_MS`, 5 с) → `session`; `fade` уходит в TD, клиент видит отсчёт (`queue:update`, `position: 0`); пауз без задач нет |
 | Удаление при дисконнекте     | `splice(index-1, 2)` — удаляет **соседнюю** задачу, если `Fade` не стоит перед ней (index 0 → `splice(-1, 2)`) | фильтр по `user.id`                                            | `remove(userId)`: ждущих — фильтром, текущего — `skipCurrent()`                                          |
 | Прерывание текущего          | нет                                                                                                            | через внешние переменные `currentInteractiveNext` в `index.ts` | `skipCurrent()` внутри очереди                                                                           |
-| Время ожидания               | сумма `duration` впереди + остаток текущей                                                                     | то же + `currentTaskFinishAfter()`                             | `placeOf(index)` с учётом `gapMs`; событие `update` для всех ждущих                                      |
+| Время ожидания               | сумма `duration` впереди + остаток текущей                                                                     | то же + `currentTaskFinishAfter()`                             | `placeOf(userId)`: остаток текущей задачи + задачи впереди (fade и сеансы); событие `update` для всех ждущих |
 | Кратковременный разрыв связи | место теряется сразу                                                                                           | то же                                                          | grace-период `DISCONNECT_GRACE_MS` (10 с) в socket-слое                                                  |
 | Порядок событий              | синхронно внутри `add()`                                                                                       | то же                                                          | `start`/`finish`/`update`/`drain` через `queueMicrotask`, чтобы ack на запрос уходил раньше push-событий |
 
@@ -102,9 +102,11 @@ URL `EXTERNAL_WS_URL`, по умолчанию `ws://10.11.113.101:85`). tv-towe
 
 1. Секреты и ID программ CCS вынесены в env.
 2. Повторный логин в CCS не создаёт второй сокет.
-3. `reconnect` слушается на Manager, resync состояния после реконнекта
-   (`getPrograms` → `state.sync`), иначе пропущенные `programStateChange`
-   теряются.
+3. Состояние группы «App state» читается (`getPrograms` → `state.sync`) на
+   **каждом** событии `connect` сокета CCS: первый логин, авто-reconnect
+   socket.io, ручной перелогин после `io server disconnect` или
+   отвергнутого токена (последние два `reconnect` Manager'а не эмитят).
+   Иначе пропущенные `programStateChange` теряются.
 4. Сервер поднимается сразу, CCS подключается в фоне с backoff; до первой
    синхронизации отдаётся безопасное состояние (`techPause=true`).
 5. Геозона не падает без центра, учитывает точность GPS, возвращает
@@ -180,17 +182,27 @@ CCS ──socket.io──▶ CloudClient ──stateChange──▶ AppState ─
 
 Правила:
 
-- `position: 0` в ответе на `session:request` означает, что сеанс начался
-  немедленно; `session:start` может прийти **до** ack. Клиент подписывается
-  на `session:start` / `session:end` / `queue:update` до отправки запроса.
-- `touch:event` обрабатывается только от пользователя текущего сеанса,
-  остальные молча отбрасываются. Серверного превью нет: TD получает поток,
+- Каждый запрос ставит в очередь **ход** из двух задач: `fade`
+  (`FADE_MS`, 5 с — фасад анимирует переход к интерактиву, пользователь
+  видит отсчёт) и сам `session` (`SESSION_MS`). `position: 0` означает, что
+  ход пользователя уже идёт: фасад делает fade, сеанс начнётся через
+  `waitMs` (это и есть отсчёт). Для ждущих `position` — число пользователей
+  впереди, `waitMs` включает их fade и сеансы. В начале fade пользователь
+  получает `queue:update { waitMs: FADE_MS, position: 0 }`, по его концу —
+  `session:start`; push-события могут прийти **до** ack, поэтому клиент
+  подписывается на `session:start` / `session:end` / `queue:update` до
+  отправки запроса.
+- `touch:event` обрабатывается только от пользователя текущего сеанса и
+  только на шаге `session` (во время fade — отбрасывается), остальные молча
+  отбрасываются. Серверного превью нет: TD получает поток,
   клиент рисует локально.
 - При разрыве соединения место в очереди сохраняется
   `DISCONNECT_GRACE_MS`; если тот же `userId` вернулся раньше, таймер
   снимается. Текущий сеанс при истечении grace пропускается
   (`session:end` с `skipped` для остальных не отправляется, они получают
   `queue:update`).
+- Отмена или обрыв во время своего fade завершает ход как сеанс:
+  пользователь получает `session:end { skipped }`, TD — `session:end`.
 - При переходе `screen` из `interactive` в любой другой очередь очищается,
   все участники получают `session:end { reason: 'skipped' }`.
 
@@ -215,11 +227,22 @@ CCS ──socket.io──▶ CloudClient ──stateChange──▶ AppState ─
 Команды (`command`, буферизуются до реконнекта, получают `timestamp` ISO):
 
 ```json
+{ "type": "fade", "sessionId": "…", "mode": "comet",
+  "params": { "color": "#FF4848" }, "durationMs": 5000, "timestamp": "…" }
 { "type": "session:start", "sessionId": "…", "mode": "comet",
   "params": { "color": "#FF4848" }, "durationMs": 40000, "timestamp": "…" }
 { "type": "session:end", "sessionId": "…", "reason": "completed", "timestamp": "…" }
 { "type": "drain", "timestamp": "…" }
 ```
+
+Порядок на один ход: `fade` (TD за `durationMs` = `FADE_MS` переводит
+фасад к интерактиву, как `Fade` в tv-tower / `fade` в Кутаиси) →
+`session:start` (тот же `sessionId`) → поток `touch:event` →
+`session:end`. Если ход отменён во время fade (cancel, grace, техпауза),
+после `fade` приходит `session:end { reason: 'skipped' }` без
+`session:start`. `drain` — очередь пуста, фасад возвращается к idle-шоу.
+Между ходами пауз нет: следующий `fade` уходит сразу за `session:end`.
+Типы в `apps/server/src/app/ports/facade-gateway.ts`.
 
 `params` по режимам из дизайна: `comet` → `color` (hex из палитры),
 `milky-way` → `width` (индекс ширины кисти 0–3), `palette` → `palette`
@@ -297,7 +320,7 @@ Socket.IO + `/health`), он не раздаёт статику.
 | `TD_WS_URL`                                                                                                     | адрес TouchDesigner; пусто — TD отключён                                      | —                                                                       |
 | `TD_PING_INTERVAL_MS`                                                                                           | интервал ping                                                                 | `30000`                                                                 |
 | `SESSION_MS`                                                                                                    | длительность сеанса                                                           | `40000`                                                                 |
-| `SESSION_GAP_MS`                                                                                                | пауза между сеансами                                                          | `5000`                                                                  |
+| `FADE_MS`                                                                                                       | задача `fade` перед каждым сеансом (отсчёт + переход фасада)                  | `5000`                                                                  |
 | `DISCONNECT_GRACE_MS`                                                                                           | удержание места при разрыве                                                   | `10000`                                                                 |
 
 Значения ZAG собраны в [`ccs-ids.md`](ccs-ids.md) и `apps/server/src/ccs-ids.ts`;
@@ -352,7 +375,7 @@ Socket.IO + `/health`), он не раздаёт статику.
 код в OOP-стиле (см. `AGENTS.md`): `ZagAppState` (= `AppState<ZagFlag>` +
 `publicState` + `static resolveScreen`), `CloudGatewayFactory.create`,
 `ConfigLoader.load`, `StructuredLogger`, `HealthHttpServer.create`,
-`ZagSocketServer`, композиционный корень `Application` в `bootstrap.ts`: sync после `connect` и `reconnect`,
+`ZagSocketServer`, `StateSyncService` (`app/services`): sync на каждом `connect`, рассылка только при реальном отличии состояния; `SessionQueue` + `SessionService` (§ 4: `session:request` / `session:cancel` / `touch:event`, `queue:update` / `session:start` / `session:end`, grace при разрыве, сброс при уходе со `screen: interactive`; сквозной тест в `bootstrap.test.ts`),
 `state:update` всем сокетам на `synced`/`change`, `state:update` при
 подключении и `state:get`, `state` в `/health`. Конфиг состояния лежит в
 `config.state` (`groupID`, `programs`, `initial`, `overrides`), а не в
@@ -372,8 +395,8 @@ Socket.IO + `/health`), он не раздаёт статику.
 
 - ID программ и учётка CCS для проекта ZAG; семантика флага `schedule`.
 - Длительность сеанса: в дизайне 40 с, в Кутаиси 30 с на сеанс + 10 с
-  сбора точек; подтвердить `SESSION_MS` и нужен ли `SESSION_GAP_MS` для
-  fade на фасаде.
+  сбора точек; подтвердить `SESSION_MS`. Fade перед сеансом — 5 с
+  (`FADE_MS`, как в tv-tower), согласовать с оператором TD.
 - Анти-абьюз: Кутаиси отключал сокет после 20 чужих `touch:event`; в
   унифицированной версии события отбрасываются молча. Добавить лимит, если
   появятся злоупотребления.
