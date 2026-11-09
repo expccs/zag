@@ -42,8 +42,18 @@ export const BRUSH_WIDTHS: readonly BrushWidth[] = [
 export const DEFAULT_WHEEL_POINT = { x: 0.49, y: 0.235 } as const;
 export const DEFAULT_COLOR = '#FF4848';
 
+/**
+ * Modes shown in the app. «Чумацький шлях» and «Палітра» are built but
+ * hidden until the facade side is ready; their copy and setup stay in
+ * place, so enabling them is a one-line change here.
+ */
+export const ENABLED_MODES: readonly InteractiveMode[] = ['comet'];
+
 export const isMode = (value: unknown): value is InteractiveMode =>
   value === 'comet' || value === 'milky-way' || value === 'palette';
+
+export const isEnabledMode = (value: unknown): value is InteractiveMode =>
+  isMode(value) && ENABLED_MODES.includes(value);
 
 export const defaultSetup = (mode: InteractiveMode): Setup => {
   switch (SETUP_KIND[mode]) {

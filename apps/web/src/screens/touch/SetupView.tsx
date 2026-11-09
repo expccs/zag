@@ -5,7 +5,7 @@ import { useLanguage } from '../../i18n/use-language';
 import {
   SETUP_KIND,
   defaultSetup,
-  isMode,
+  isEnabledMode,
   toRequest,
   type Setup,
 } from '../../interactive/modes';
@@ -54,11 +54,11 @@ export const SetupView = () => {
   const { messages } = useLanguage();
   const { session } = useSession();
   const [setup, setSetup] = useState<Setup>(() =>
-    isMode(mode) ? defaultSetup(mode) : defaultSetup('comet'),
+    isEnabledMode(mode) ? defaultSetup(mode) : defaultSetup('comet'),
   );
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
-  if (!isMode(mode)) return <Navigate to="/touch" replace />;
+  if (!isEnabledMode(mode)) return <Navigate to="/touch" replace />;
 
   const start = async () => {
     setPending(true);

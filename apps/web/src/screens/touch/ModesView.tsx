@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import type { ModeCard } from '../../i18n/messages';
 import { useLanguage } from '../../i18n/use-language';
+import { isEnabledMode } from '../../interactive/modes';
 import { TouchChrome } from './TouchChrome';
 import styles from './modes.module.css';
 
@@ -24,8 +25,9 @@ const renderCard = (card: ModeCard) => (
 );
 
 /**
- * «Режими» `26:1957` / `47:4183`: h1 and three liquid-glass cards
- * (design-system.md § 6.5), each opening the instructions of its mode.
+ * «Режими» `26:1957` / `47:4183`: h1 and the liquid-glass cards
+ * (design-system.md § 6.5) of the enabled modes, each opening the
+ * instructions of its mode.
  */
 export const ModesView = () => {
   const { messages } = useLanguage();
@@ -34,7 +36,9 @@ export const ModesView = () => {
     <TouchChrome back="/mission">
       <div className={styles.modes}>
         <h1 className={styles.title}>{title}</h1>
-        <ul className={styles.list}>{cards.map(renderCard)}</ul>
+        <ul className={styles.list}>
+          {cards.filter((card) => isEnabledMode(card.mode)).map(renderCard)}
+        </ul>
       </div>
     </TouchChrome>
   );

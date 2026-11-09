@@ -27,6 +27,10 @@ Handoff log between agent sessions. Newest entry on top. See the
     design-system.md § 9). Typecheck / eslint / prettier / build green;
     headless-Chrome CDP walkthrough (scratchpad `walk.mjs`, UA + ENG)
     screenshotted every screen incl. landscape countdown and drawing.
+  - Only «Комета» is shown for now: `ENABLED_MODES` in
+    `interactive/modes.ts` filters the mode cards and guards
+    `/touch/:mode` and `/touch/:mode/setup` (hidden modes redirect to the
+    list); copy, pickers and trail code of the other two modes stay.
 - **Next step:** try on real phones (orientation lock, pointer capture,
   fade timing of the trail), then commit stages 2–4; geo-fence remains.
 - **Blockers / open questions:** the forward arrow on the landscape
