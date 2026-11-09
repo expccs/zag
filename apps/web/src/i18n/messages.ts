@@ -101,6 +101,8 @@ export interface Messages {
     fade: {
       title: string;
       titleLandscape: string;
+      /** Pill title while the phone is still in portrait; ours. */
+      rotateTitle: string;
       rotate: string;
       hint: string;
     };
@@ -383,6 +385,7 @@ const uk: Messages = {
     fade: {
       title: 'Початок через',
       titleLandscape: 'Початок через',
+      rotateTitle: 'Поверніть телефон',
       rotate: 'Переверніть смартфон в горизонтальне положення.',
       hint:
         'Рухайте пальцем по зображенню фасаду, і світло вашого доторку ' +
@@ -637,6 +640,7 @@ const en: Messages = {
     fade: {
       title: 'Starting in',
       titleLandscape: 'Starts in',
+      rotateTitle: 'Rotate your phone',
       rotate: 'Turn your smartphone to landscape mode.',
       hint:
         'Move your finger across the façade image and watch your touch ' +

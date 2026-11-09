@@ -76,6 +76,13 @@ Handoff log between agent sessions. Newest entry on top. See the
     CCS mode keeps the log-only facade. The client retries forever every
     5 s (`reconnectMs`, no backoff) and warns once per outage, so the
     link opens by itself when TD comes up. Test added.
+  - `session:request` is sent only once the phone is in landscape:
+    «Почати» → `session.prepare()` (phase `pending`) → portrait prompt
+    «Поверніть телефон» → landscape → `session.start()` (`requesting`).
+    `RotateView` takes a title and serves every phase in portrait;
+    `QueueView` has a landscape variant (no Figma frame: countdown chrome
+    + the ring); a failed request returns to the setup with
+    `state.failed`. Orientation lock now covers the whole turn.
 - **Next step:** try on real phones (orientation lock, pointer capture,
   fade timing of the trail), then commit stages 2–4; geo-fence remains.
 - **Blockers / open questions:** the forward arrow on the landscape

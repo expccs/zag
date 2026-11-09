@@ -1,28 +1,22 @@
-import { formatClock, useSecondsUntil } from '../../../hooks/use-seconds-until';
 import { useLanguage } from '../../../i18n/use-language';
-import type { SessionPhase } from '../../../socket/session-store';
 import { TouchChrome } from '../TouchChrome';
 import styles from './session.module.css';
 
 export interface RotateViewProps {
-  phase: Extract<SessionPhase, { phase: 'fade' | 'active' }>;
+  /** Pill text: «Поверніть телефон», «Початок через N» or the timer. */
+  title: string;
   onLeave: () => void;
 }
 
 /**
- * «Початок через» in portrait `89:1852` / `89:1915`: the countdown of the
- * fade, the rotate-phone drawing and the swipe hint. While the session
- * already runs the pill shows the remaining time instead.
+ * Portrait prompt `89:1852` / `89:1915`: a pill with the current status,
+ * the rotate-phone drawing and the swipe hint. Shown whenever the phone
+ * is held upright during a turn: before the request goes out, in the
+ * queue, during the fade and while the session runs.
  */
-export const RotateView = ({ phase, onLeave }: RotateViewProps) => {
+export const RotateView = ({ title, onLeave }: RotateViewProps) => {
   const { messages } = useLanguage();
-  const targetAt = phase.phase === 'fade' ? phase.startsAt : phase.endsAt;
-  const seconds = useSecondsUntil(targetAt);
-  const { fade, drawing } = messages.touch;
-  const title =
-    phase.phase === 'fade'
-      ? `${fade.title} ${seconds}`
-      : `${drawing.timer}: ${formatClock(seconds)}`;
+  const { fade } = messages.touch;
   return (
     <TouchChrome back={onLeave}>
       <div className={styles.rotate}>

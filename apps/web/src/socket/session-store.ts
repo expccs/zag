@@ -17,6 +17,10 @@ import type { ZagSocket } from './socket-context';
  */
 export type SessionPhase =
   | { phase: 'idle' }
+  /** Setup done; the request waits for the phone to turn to landscape. */
+  | { phase: 'pending'; request: SessionRequest }
+  /** `session:request` sent, ack not yet in. */
+  | { phase: 'requesting'; request: SessionRequest }
   | {
       phase: 'queued';
       sessionId: string;
@@ -45,8 +49,10 @@ export type SessionPhase =
 export interface SessionStore {
   subscribe: (listener: () => void) => () => void;
   getSnapshot: () => SessionPhase;
-  /** `session:request`; the phase follows the ack. */
-  request: (request: SessionRequest) => Promise<SessionRequestResult>;
+  /** Remembers the chosen mode; nothing is sent until `start`. */
+  prepare: (request: SessionRequest) => void;
+  /** Sends the prepared `session:request`; the phase follows the ack. */
+  start: () => Promise<SessionRequestResult>;
   /** Leaves the queue (or the running turn) and goes idle. */
   cancel: () => void;
   /** Forgets the turn without telling the server (final screen, leaving). */
@@ -114,12 +120,18 @@ export const createSessionStore = (socket: ZagSocket): SessionStore => {
     }
   };
 
-  const request = async (
-    body: SessionRequest,
-  ): Promise<SessionRequestResult> => {
+  const start = async (): Promise<SessionRequestResult> => {
+    const current = snapshot;
+    if (current.phase !== 'pending') {
+      return { success: false, code: 'EINTERNAL' };
+    }
+    const body = current.request;
+    set({ phase: 'requesting', request: body });
     const result = await emitRequest(body);
     if (result.success) {
       applyPlace(result, result.sessionId, body, result.durationMs);
+    } else if (snapshot.phase === 'requesting') {
+      set({ phase: 'pending', request: body });
     }
     return result;
   };
@@ -171,7 +183,10 @@ export const createSessionStore = (socket: ZagSocket): SessionStore => {
       };
     },
     getSnapshot: () => snapshot,
-    request,
+    prepare: (body) => {
+      set({ phase: 'pending', request: body });
+    },
+    start,
     cancel: () => {
       if (isLive(snapshot)) socket.emit(EVENTS.sessionCancel, () => {});
       set(IDLE);
