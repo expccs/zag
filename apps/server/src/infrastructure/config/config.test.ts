@@ -25,6 +25,7 @@ describe('ConfigLoader', () => {
       sessionMs: 40_000,
       fadeMs: 5_000,
       disconnectGraceMs: 10_000,
+      syncMs: 5_000,
     });
     assert.deepEqual(config.facade, { url: null, pingIntervalMs: 30_000 });
     assert.deepEqual(config.controls, {
@@ -76,6 +77,7 @@ describe('ConfigLoader', () => {
       CCS_CONTROLS_GROUP: 'g-controls',
       CCS_PROGRAM_SESSION_END: 'p-end',
       DISCONNECT_GRACE_MS: '80',
+      QUEUE_SYNC_MS: '40',
     });
     assert.equal(config.state.groupID, 'g2');
     assert.equal(config.state.programs.schedule, 'p-sched');
@@ -91,6 +93,7 @@ describe('ConfigLoader', () => {
       sessionMs: 150,
       fadeMs: 30,
       disconnectGraceMs: 80,
+      syncMs: 40,
     });
     assert.deepEqual(config.facade, {
       url: 'ws://10.0.0.5:85',

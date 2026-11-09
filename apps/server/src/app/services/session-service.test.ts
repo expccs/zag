@@ -97,7 +97,7 @@ const flush = (): Promise<void> =>
     setImmediate(resolve);
   });
 
-const FAST = { sessionMs: 60, fadeMs: 20, disconnectGraceMs: 30 };
+const FAST = { sessionMs: 60, fadeMs: 20, disconnectGraceMs: 30, syncMs: 25 };
 
 const createService = (
   overrides: Partial<Record<ZagFlag, boolean>> = {},
@@ -230,6 +230,42 @@ describe('SessionService', () => {
     await flush();
     assert.ok(clients.events.includes('u1:end:skipped'));
     service.stop();
+  });
+
+  it('resends places periodically and to a phone that reconnects', async () => {
+    const { service, clients } = createService({}, { ...FAST, sessionMs: 200 });
+    const first = service.request('u1', COMET);
+    service.request('u2', COMET);
+    service.request('u3', COMET);
+    await flush();
+    const queueEvents = () =>
+      clients.events.filter((event) => event.includes(':queue:'));
+    try {
+      // Only the fade start of u1 so far; ticks (and u1's fade ending) then
+      // repeat the places of u2 and u3 over and over.
+      assert.deepEqual(queueEvents(), ['u1:queue:0']);
+      await sleep(30);
+      const early = queueEvents();
+      assert.ok(early.includes('u2:queue:1') && early.includes('u3:queue:2'));
+      await sleep(60);
+      const later = queueEvents();
+      assert.ok(later.length >= early.length + 2, 'ticks keep coming');
+      // u1 runs its session: it is not part of the sync any more.
+      assert.deepEqual(later.slice(-2), ['u2:queue:1', 'u3:queue:2']);
+
+      // u3 comes back from a connection drop: its place; u1 its session.
+      const before = clients.events.length;
+      service.userConnected('u3');
+      service.userConnected('u1');
+      service.userConnected('stranger');
+      assert.deepEqual(clients.events.slice(before), [
+        'u3:queue:2',
+        'u1:start:comet',
+      ]);
+      assert.equal(service.summary.active, first.sessionId);
+    } finally {
+      service.stop();
+    }
   });
 
   it('aborts every turn when the screen leaves interactive', async () => {

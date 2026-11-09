@@ -89,6 +89,12 @@ Handoff log between agent sessions. Newest entry on top. See the
     § 11) and never open the socket. `VITE_ANY_DEVICE=true` bypasses it.
     Its background is `public/bg-home-large.jpg` (1365 × 2048 from the
     source photo) with the Home radial darkening as a CSS layer.
+  - Queue timing resync: `SessionQueue.places()` (fading user at
+    `position: 0` + waiting users); `SessionService` broadcasts every
+    place each `syncMs` (`QUEUE_SYNC_MS`, 5 s) while the queue is busy and
+    on `userConnected` re-sends the user's place or `session:start` with
+    the remaining `durationMs` (protocol doc updated). Web countdown
+    subscribers are freed when unused. Tests added.
 - **Next step:** try on real phones (orientation lock, pointer capture,
   fade timing of the trail), then commit stages 2–4; geo-fence remains.
 - **Blockers / open questions:** the forward arrow on the landscape

@@ -76,7 +76,9 @@ export type SessionErrorCode =
  * Place in the queue. `position: 0` means the user's turn is on: the
  * facade is fading in and the session starts in `waitMs` (the countdown).
  * Otherwise `position` counts the users ahead and `waitMs` includes their
- * fades and sessions.
+ * fades and sessions. Sent on every change of the queue, every
+ * `QUEUE_SYNC_MS` while the user waits, and on reconnect: the phone
+ * always restarts its countdown from the latest value.
  */
 export interface QueuePlace {
   waitMs: number;
@@ -101,7 +103,13 @@ export interface SessionCancelResult {
 export interface SessionInfo {
   sessionId: string;
   mode: InteractiveMode;
+  /**
+   * Milliseconds the session still runs from now: the full length on the
+   * first `session:start`, the remainder when the server re-sends it to a
+   * reconnected phone.
+   */
   durationMs: number;
+  /** Server clock; phones count from their own `now + durationMs`. */
   endsAt: number;
 }
 

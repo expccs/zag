@@ -37,7 +37,7 @@ export interface ServerConfig {
   state: StateConfig;
   /** CCS «Public app controls» buttons (`CCS_CONTROLS_GROUP`, …). */
   controls: ControlsConfig;
-  /** Queue timing (`SESSION_MS`, `FADE_MS`, `DISCONNECT_GRACE_MS`). */
+  /** Queue timing (`SESSION_MS`, `FADE_MS`, grace, `QUEUE_SYNC_MS`). */
   session: SessionConfig;
   /** TouchDesigner (`TD_WS_URL`, `TD_PING_INTERVAL_MS`). */
   facade: FacadeConfig;
@@ -149,6 +149,7 @@ export class ConfigLoader {
       sessionMs: reader.number('SESSION_MS', 40_000),
       fadeMs: reader.number('FADE_MS', 5_000),
       disconnectGraceMs: reader.number('DISCONNECT_GRACE_MS', 10_000),
+      syncMs: reader.number('QUEUE_SYNC_MS', 5_000),
     };
   }
 

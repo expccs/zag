@@ -125,7 +125,12 @@ CCS в фоне с ретраями логина; на каждом событи
   конце сеанса) и отдаёт точку в `facade.stream` (без буфера).
 - `userDisconnected` / `userConnected` — grace `disconnectGraceMs`: место
   держится, пока не вернулась хотя бы одна вкладка; по истечении —
-  `cancel`.
+  `cancel`. `userConnected` также пересылает пользователю его текущее
+  место (`queue.places()`, включая `position: 0` в fade) или
+  `session:start` с остатком времени.
+- Пока очередь не пуста, `setInterval(syncMs)` (`QUEUE_SYNC_MS`) шлёт
+  всем из `queue.places()` их `queue:update` заново — сервер задаёт время,
+  телефоны только отсчитывают от последнего значения.
 - `state.change` → `screen !== 'interactive'` → `abort()`: ждущие получают
   `session:end { skipped }` сразу, текущая задача — через очередь.
 - `summary` → `/health.sessions: { active, waiting }`; `/health.facade:

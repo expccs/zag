@@ -116,6 +116,22 @@ describe('SessionQueue', () => {
     queue.clear();
   });
 
+  it('places() lists the fading user first, then the waiting ones', () => {
+    const queue = new SessionQueue<Step>();
+    queue.enqueue(turn('a', 'u1', 50, 100));
+    queue.enqueue(turn('b', 'u2', 50, 100));
+    const places = queue.places();
+    assert.deepEqual(
+      places.map((p) => [p.userId, p.position]),
+      [
+        ['u1', 0],
+        ['u2', 1],
+      ],
+    );
+    assert.ok(near(places[0].waitMs, 50) && near(places[1].waitMs, 200));
+    queue.clear();
+  });
+
   it('removing a waiting user updates the others, a stranger is a no-op', async () => {
     const queue = new SessionQueue<Step>();
     const updates: string[][] = [];

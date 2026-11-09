@@ -53,6 +53,8 @@ export class SessionService implements SessionApi {
   private readonly logger: Logger;
   /** A finger is down in the running session (stroke `begin` sent). */
   private strokeOpen = false;
+  /** Ticks while anyone waits: every phone gets its place again. */
+  private syncTimer: NodeJS.Timeout | null = null;
 
   constructor(
     @inject(SESSION_CONFIG) private readonly config: SessionConfig,
@@ -126,12 +128,19 @@ export class SessionService implements SessionApi {
     return true;
   }
 
+  /**
+   * A socket of the user is (back) online: the grace timer stops and the
+   * phone gets its current place or session again, so a countdown that
+   * drifted or missed events while offline snaps back to the server.
+   */
   userConnected(userId: string): void {
     const timer = this.graceTimers.get(userId);
-    if (!timer) return;
-    clearTimeout(timer);
-    this.graceTimers.delete(userId);
-    this.logger.info('session grace cleared', { userId });
+    if (timer) {
+      clearTimeout(timer);
+      this.graceTimers.delete(userId);
+      this.logger.info('session grace cleared', { userId });
+    }
+    this.resync(userId);
   }
 
   userDisconnected(userId: string): void {
@@ -150,7 +159,15 @@ export class SessionService implements SessionApi {
   stop(): void {
     for (const timer of this.graceTimers.values()) clearTimeout(timer);
     this.graceTimers.clear();
+    this.stopSync();
     this.queue.clear();
+  }
+
+  /** Sends every waiting phone (and the one in its fade) its place now. */
+  syncPlaces(): void {
+    for (const { userId, waitMs, position } of this.queue.places()) {
+      this.clients.notifyQueue(userId, { waitMs, position });
+    }
   }
 
   private strokePhase(event: TouchEvent): StrokePhase | null {
@@ -188,6 +205,7 @@ export class SessionService implements SessionApi {
     });
     queue.on('drain', () => {
       logger.info('queue drained');
+      this.stopSync();
       facade.command({ type: 'drain' });
     });
     this.state.on('change', () => {
@@ -195,7 +213,46 @@ export class SessionService implements SessionApi {
     });
   }
 
+  // Periodic resync: phones throttle timers in the background and miss
+  // events while reconnecting; the server's clock wins every `syncMs`.
+  private startSync(): void {
+    if (this.syncTimer) return;
+    this.syncTimer = setInterval(() => this.syncPlaces(), this.config.syncMs);
+    this.syncTimer.unref();
+  }
+
+  private stopSync(): void {
+    if (!this.syncTimer) return;
+    clearInterval(this.syncTimer);
+    this.syncTimer = null;
+  }
+
+  // The user's own view of the queue, as the events would have told it.
+  private resync(userId: string): void {
+    const current = this.queue.currentTask;
+    if (
+      current &&
+      current.userId === userId &&
+      current.payload.step === 'session'
+    ) {
+      const { mode } = current.payload.request;
+      const remainingMs = this.queue.currentRemainingMs();
+      this.clients.notifySessionStart(userId, {
+        sessionId: current.id,
+        mode,
+        durationMs: remainingMs,
+        endsAt: Date.now() + remainingMs,
+      });
+      return;
+    }
+    const place = this.queue.places().find((item) => item.userId === userId);
+    if (!place) return;
+    const { waitMs, position } = place;
+    this.clients.notifyQueue(userId, { waitMs, position });
+  }
+
   private startFade(task: Task): void {
+    this.startSync();
     const { id: sessionId, userId, durationMs } = task;
     const { mode, params } = task.payload.request;
     this.logger.info('fade started', { userId, sessionId, mode, durationMs });

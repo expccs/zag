@@ -22,15 +22,29 @@ const subscribeTo = (targetAt: number) => (listener: () => void) => {
 
 type Subscribe = (listener: () => void) => () => void;
 
-const subscribers = new Map<number, Subscribe>();
+// One stable subscribe function per target, so `useSyncExternalStore`
+// re-subscribes only when the target moves; the entry goes away with the
+// last subscriber (resyncs from the server create a new target each time).
+const subscribers = new Map<number, { subscribe: Subscribe; users: number }>();
 
-const subscriberFor = (targetAt: number) => {
-  let subscribe = subscribers.get(targetAt);
-  if (!subscribe) {
-    subscribe = subscribeTo(targetAt);
-    subscribers.set(targetAt, subscribe);
-  }
-  return subscribe;
+const subscriberFor = (targetAt: number): Subscribe => {
+  const cached = subscribers.get(targetAt);
+  if (cached) return cached.subscribe;
+  const raw = subscribeTo(targetAt);
+  const entry = {
+    users: 0,
+    subscribe: (listener: () => void) => {
+      entry.users += 1;
+      const stop = raw(listener);
+      return () => {
+        stop();
+        entry.users -= 1;
+        if (entry.users === 0) subscribers.delete(targetAt);
+      };
+    },
+  };
+  subscribers.set(targetAt, entry);
+  return entry.subscribe;
 };
 
 /** Whole seconds left until `targetAt` (a `Date.now()` timestamp), live. */

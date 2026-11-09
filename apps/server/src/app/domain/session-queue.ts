@@ -120,6 +120,23 @@ export class SessionQueue<T> extends EventEmitter<SessionQueueEvents<T>> {
     return dropped;
   }
 
+  /**
+   * Every user who still waits for a task to start: the waiting users in
+   * order and, first, the running user while an earlier task of the turn
+   * (the fade) is on (`position: 0`). For periodic resyncs of the phones.
+   */
+  places(): QueueWait[] {
+    const current = this.current;
+    const places = this.waits();
+    if (current && this.lastIndexOf(current.userId) !== -1) {
+      places.unshift({
+        userId: current.userId,
+        ...this.placeOf(current.userId),
+      });
+    }
+    return places;
+  }
+
   /** One entry per waiting user, in order; the running user is not listed. */
   waits(): QueueWait[] {
     const seen = new Set<string>();
@@ -165,7 +182,8 @@ export class SessionQueue<T> extends EventEmitter<SessionQueueEvents<T>> {
     return -1;
   }
 
-  private currentRemainingMs(): number {
+  /** Milliseconds until the running task ends; 0 when idle. */
+  currentRemainingMs(): number {
     if (!this.current) return 0;
     return Math.max(0, this.currentEndsAt - Date.now());
   }
