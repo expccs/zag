@@ -312,21 +312,29 @@ describe('Application (composition root)', () => {
     assert.ok(commands.every((m) => typeof m.timestamp === 'string'));
     assert.equal((await health()).facade.dropped, 0);
 
-    // The CCS «Public app controls» buttons saw start / end of each turn
-    // that reached the facade (the fade and drain have no button).
-    const { controls } = config;
-    const buttons = cloud.commands.map((command) =>
-      command.programID === controls.programs.sessionStart
-        ? `start ${(JSON.parse(command.params?.[0] as string) as { mode: string }).mode}`
-        : `end ${command.params ?? ''}`,
+    // The CCS «Public app controls» buttons mirror the facade commands.
+    const { programs } = config.controls;
+    const button = Object.fromEntries(
+      Object.entries(programs).map(([name, id]) => [id, name]),
     );
+    const buttons = cloud.commands.map((command) => {
+      const name = button[command.programID];
+      const json = command.params?.[0];
+      if (typeof json !== 'string') return name;
+      return `${name} ${(JSON.parse(json) as { mode: string }).mode}`;
+    });
     assert.deepEqual(buttons, [
-      'start comet',
-      'end ',
-      'start palette',
-      'end ',
-      'start comet',
-      'end ',
+      'fade comet',
+      'sessionStart comet',
+      'sessionEnd',
+      'fade palette',
+      'sessionStart palette',
+      'sessionEnd',
+      'idle',
+      'fade comet',
+      'sessionStart comet',
+      'sessionEnd',
+      'idle',
     ]);
     assert.ok(
       cloud.commands.every(

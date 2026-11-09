@@ -3,27 +3,29 @@ import type {
   FacadeCommand,
   FacadeGateway,
   FacadeTouch,
+  FadeCommand,
   SessionStartCommand,
 } from '../../app/ports/facade-gateway';
 import type { Logger } from '../../app/ports/logger';
 
+export type ControlButton = 'sessionStart' | 'sessionEnd' | 'fade' | 'idle';
+
 export interface ControlsConfig {
   /** `_id` of the «Public app controls» group; null disables the buttons. */
   groupID: string | null;
-  programs: {
-    /** `WITH_PARAMS` button: one JSON string with the session. */
-    sessionStart: string;
-    /** Plain `COMMAND` button. */
-    sessionEnd: string;
-  };
+  /**
+   * `sessionStart` and `fade` are `WITH_PARAMS` buttons taking one JSON
+   * string with the session; `sessionEnd` and `idle` are plain `COMMAND`s.
+   */
+  programs: Record<ControlButton, string>;
 }
 
 /**
  * `FacadeGateway` through CCS (docs/backend/ccs-ids.md): the «Public app
- * controls» buttons of the ZAG project. `session:start` runs the
- * `WITH_PARAMS` button with `params: [JSON]` of `{ mode, params,
- * durationMs }`, `session:end` runs the plain `COMMAND` button; `fade` and
- * `drain` have no button and the touch stream never goes through CCS.
+ * controls» buttons of the ZAG project, one per facade command. `fade` and
+ * `session:start` run the `WITH_PARAMS` buttons with `params: [JSON]` of
+ * `{ mode, params, durationMs }`; `session:end` and `drain` (→ «Idle») run
+ * the plain `COMMAND` buttons. The touch stream never goes through CCS.
  * Runs fire and forget: a failed `runProgram` is logged, the session goes
  * on (TouchDesigner gets the same commands directly).
  */
@@ -49,11 +51,23 @@ export class CloudControls implements FacadeGateway {
   }
 
   command(command: FacadeCommand): void {
-    if (command.type === 'session:start') {
-      const payload = CloudControls.sessionPayload(command);
-      void this.run(this.config.programs.sessionStart, [payload], command);
-    } else if (command.type === 'session:end') {
-      void this.run(this.config.programs.sessionEnd, undefined, command);
+    const { programs } = this.config;
+    switch (command.type) {
+      case 'fade':
+        void this.run(programs.fade, [CloudControls.payload(command)], command);
+        break;
+      case 'session:start':
+        void this.run(
+          programs.sessionStart,
+          [CloudControls.payload(command)],
+          command,
+        );
+        break;
+      case 'session:end':
+        void this.run(programs.sessionEnd, undefined, command);
+        break;
+      default:
+        void this.run(programs.idle, undefined, command);
     }
   }
 
@@ -66,8 +80,8 @@ export class CloudControls implements FacadeGateway {
     this.logger.info('ccs controls closed');
   }
 
-  /** What the `WITH_PARAMS` button receives as `params[0]`. */
-  static sessionPayload(command: SessionStartCommand): string {
+  /** What a `WITH_PARAMS` button receives as `params[0]`. */
+  static payload(command: FadeCommand | SessionStartCommand): string {
     const { mode, params, durationMs } = command;
     return JSON.stringify({ mode, params, durationMs });
   }

@@ -29,7 +29,12 @@ describe('ConfigLoader', () => {
     assert.deepEqual(config.facade, { url: null, pingIntervalMs: 30_000 });
     assert.deepEqual(config.controls, {
       groupID: 'offline:controls',
-      programs: { sessionStart: 'ospyruigxyop', sessionEnd: 'fwzxaqlwzwbu' },
+      programs: {
+        sessionStart: 'ospyruigxyop',
+        sessionEnd: 'fwzxaqlwzwbu',
+        fade: 'crcerfeeroxz',
+        idle: 'ueplzvoyanld',
+      },
     });
   });
 
@@ -92,7 +97,12 @@ describe('ConfigLoader', () => {
     });
     assert.deepEqual(config.controls, {
       groupID: 'g-controls',
-      programs: { sessionStart: 'ospyruigxyop', sessionEnd: 'p-end' },
+      programs: {
+        sessionStart: 'ospyruigxyop',
+        sessionEnd: 'p-end',
+        fade: 'crcerfeeroxz',
+        idle: 'ueplzvoyanld',
+      },
     });
   });
 

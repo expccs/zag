@@ -1,0 +1,196 @@
+[
+  {
+    "type": "REGULAR",
+    "projectID": "676ed9a3108c970013dcb321",
+    "name": "Public app controls",
+    "activeProgram": "fwzxaqlwzwbu",
+    "settings": null,
+    "programs": [
+      {
+        "_id": "ospyruigxyop",
+        "name": "Session start",
+        "textColor": "#ffffff",
+        "commands": [
+          {
+            "uid": "qvgayndsqmik",
+            "groupName": "public_app",
+            "id": "session_start",
+            "device": "SR7 Facade Interactive",
+            "name": "session_start"
+          }
+        ],
+        "borderColor": "#2fd9fe",
+        "type": "WITH_PARAMS",
+        "state": null,
+        "color": "#393e64",
+        "colorOpacity": 1,
+        "size": "MD",
+        "commandRefs": [],
+        "fillType": "solid",
+        "gradientValue": "linear-gradient(135deg, #393e64, #2fd9fe)",
+        "shadowEnabled": true
+      },
+      {
+        "_id": "fwzxaqlwzwbu",
+        "name": "Session end",
+        "textColor": "#ffffff",
+        "commands": [
+          {
+            "uid": "qvgayndsqmik",
+            "groupName": "public_app",
+            "id": "session_end",
+            "device": "SR7 Facade Interactive",
+            "name": "session_end"
+          }
+        ],
+        "borderColor": "#2fd9fe",
+        "type": "COMMAND",
+        "state": null,
+        "color": "#393e64",
+        "colorOpacity": 1,
+        "size": "MD",
+        "commandRefs": [],
+        "fillType": "solid",
+        "gradientValue": "linear-gradient(135deg, #393e64, #2fd9fe)",
+        "shadowEnabled": true
+      },
+      {
+        "_id": "crcerfeeroxz",
+        "name": "Fade",
+        "textColor": "#ffffff",
+        "commands": [
+          {
+            "uid": "qvgayndsqmik",
+            "groupName": "public_app",
+            "id": "fade",
+            "device": "SR7 Facade Interactive",
+            "name": "fade"
+          }
+        ],
+        "borderColor": "#2fd9fe",
+        "type": "WITH_PARAMS",
+        "state": null,
+        "color": "#393e64",
+        "colorOpacity": 1,
+        "size": "MD",
+        "commandRefs": [],
+        "fillType": "solid",
+        "gradientValue": "linear-gradient(135deg, #393e64, #2fd9fe)",
+        "shadowEnabled": true
+      },
+      {
+        "_id": "ueplzvoyanld",
+        "name": "Idle",
+        "textColor": "#ffffff",
+        "commands": [
+          {
+            "uid": "qvgayndsqmik",
+            "groupName": "public_app",
+            "id": "idle",
+            "device": "SR7 Facade Interactive",
+            "name": "idle"
+          }
+        ],
+        "borderColor": "#2fd9fe",
+        "type": "COMMAND",
+        "state": null,
+        "color": "#393e64",
+        "colorOpacity": 1,
+        "size": "MD",
+        "commandRefs": [],
+        "fillType": "solid",
+        "gradientValue": "linear-gradient(135deg, #393e64, #2fd9fe)",
+        "shadowEnabled": true
+      }
+    ],
+    "main": false,
+    "_id": "6aef0c3e53257f190d66c477"
+  },
+  {
+    "type": "REGULAR",
+    "projectID": "676ed9a3108c970013dcb321",
+    "name": "Public app state",
+    "activeProgram": null,
+    "settings": null,
+    "programs": [
+      {
+        "_id": "azpuqosabwug",
+        "name": "Location restriction",
+        "textColor": "#ffffff",
+        "commands": [],
+        "borderColor": "#2fd9fe",
+        "type": "SWITCH",
+        "state": {
+          "value": 0
+        },
+        "color": "#393e64",
+        "colorOpacity": 1,
+        "size": "MD",
+        "commandRefs": [],
+        "fillType": "solid",
+        "gradientValue": "linear-gradient(135deg, #393e64, #2fd9fe)",
+        "shadowEnabled": true,
+        "thumb": "#836ff2"
+      },
+      {
+        "_id": "qxcsxqatyupx",
+        "name": "Allow interactive",
+        "textColor": "#ffffff",
+        "commands": [],
+        "borderColor": "#2fd9fe",
+        "type": "SWITCH",
+        "state": {
+          "value": 1
+        },
+        "color": "#393e64",
+        "colorOpacity": 1,
+        "size": "MD",
+        "commandRefs": [],
+        "fillType": "solid",
+        "gradientValue": "linear-gradient(135deg, #393e64, #2fd9fe)",
+        "shadowEnabled": true,
+        "thumb": "#836ff2"
+      },
+      {
+        "_id": "edbyrttglacr",
+        "name": "Schedule",
+        "textColor": "#ffffff",
+        "commands": [],
+        "borderColor": "#2fd9fe",
+        "type": "SWITCH",
+        "state": {
+          "value": 0
+        },
+        "color": "#393e64",
+        "colorOpacity": 1,
+        "size": "MD",
+        "commandRefs": [],
+        "fillType": "solid",
+        "gradientValue": "linear-gradient(135deg, #393e64, #2fd9fe)",
+        "shadowEnabled": true,
+        "thumb": "#836ff2"
+      },
+      {
+        "_id": "qduuwcanagbl",
+        "name": "Maintenance",
+        "textColor": "#ffffff",
+        "commands": [],
+        "borderColor": "#2fd9fe",
+        "type": "SWITCH",
+        "state": {
+          "value": 0
+        },
+        "color": "#393e64",
+        "colorOpacity": 1,
+        "size": "MD",
+        "commandRefs": [],
+        "fillType": "solid",
+        "gradientValue": "linear-gradient(135deg, #393e64, #2fd9fe)",
+        "shadowEnabled": true,
+        "thumb": "#836ff2"
+      }
+    ],
+    "main": false,
+    "_id": "6aef145253257f190d66c47b"
+  }
+]

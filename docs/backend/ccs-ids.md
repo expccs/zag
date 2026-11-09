@@ -1,14 +1,15 @@
 # CCS: идентификаторы проекта ZAG
 
 Источник: вывод `getPrograms()` живого CCS (учётка `zag`, 2026-11-07),
-группа STATE целиком в [`ccs-state-group.json`](ccs-state-group.json).
+группа STATE целиком в [`ccs-state-group.json`](ccs-state-group.json),
+обе группы проекта — в [`ccs-goups.json`](ccs-goups.json).
 В коде: `apps/server/src/ccs-ids.ts` — значения по умолчанию для
 `CCS_STATE_GROUP` / `CCS_PROGRAM_*`, env их переопределяет.
 
 | Что                                                   | Значение                                                     |
 | ----------------------------------------------------- | ------------------------------------------------------------ |
 | `CCS_PROJECT_ID` — id проекта ZAG: логин, `joinRoom`, `getPrograms`; при логине сверяется со списком `/api/user/projects` учётки | `676ed9a3108c970013dcb321` |
-| `CCS_CONTROLS_GROUP_ID` — группа «Public app controls»                                                                           | `6aef145253257f190d66c47c` |
+| `CCS_CONTROLS_GROUP_ID` — группа «Public app controls»                                                                           | `6aef0c3e53257f190d66c477` |
 
 ## Группа «Public app state» — свичи состояния (`CCS_STATE_GROUP`)
 
@@ -30,22 +31,26 @@
 
 ## Группа «Public app controls» — кнопки (`CCS_CONTROL_PROGRAMS`)
 
-`_id` группы `6aef145253257f190d66c47c` (`CCS_CONTROLS_GROUP_ID`),
-`state: null`, на флаги не влияют; приложение нажимает их через
-`execCommand` (`runProgram`) из `CloudControls`
-(`apps/server/src/infrastructure/ccs/cloud-controls.ts`) на каждом ходе
-очереди. В `offline` группа `offline:controls`, нажатия пишет
+`_id` группы `6aef0c3e53257f190d66c477` (`CCS_CONTROLS_GROUP_ID`),
+`state: null`, на флаги не влияют. Каждая кнопка ретранслирует одноимённую
+команду устройству «SR7 Facade Interactive» (группа `public_app`:
+`session_start`, `session_end`, `fade`, `idle`). Приложение нажимает их
+через `execCommand` (`runProgram`) из `CloudControls`
+(`apps/server/src/infrastructure/ccs/cloud-controls.ts`) на каждой команде
+фасада. В `offline` группа `offline:controls`, нажатия пишет
 `FakeCloudClient`.
 
-| Программа     | `programID`    | type                             | Когда и с чем                                                                                  |
-| ------------- | -------------- | -------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Session start | `ospyruigxyop` | `WITH_PARAMS` (параметры сеанса) | `session:start`; `params: [JSON]` — `{"mode":"comet","params":{"head":"#…","tail":"#…"},"durationMs":40000}` |
-| Session end   | `fwzxaqlwzwbu` | `COMMAND`                        | `session:end` (`completed` и `skipped`), без `params`                                          |
+| Программа     | `programID`    | type          | Команда фасада и `params`                                                                           |
+| ------------- | -------------- | ------------- | --------------------------------------------------------------------------------------------------- |
+| Fade          | `crcerfeeroxz` | `WITH_PARAMS` | `fade`; `params: [JSON]` — `{"mode":"comet","params":{"head":"#…","tail":"#…"},"durationMs":5000}` |
+| Session start | `ospyruigxyop` | `WITH_PARAMS` | `session:start`; `params: [JSON]` — то же с `"durationMs":40000`                                    |
+| Session end   | `fwzxaqlwzwbu` | `COMMAND`     | `session:end` (`completed` и `skipped`), без `params`                                               |
+| Idle          | `ueplzvoyanld` | `COMMAND`     | `drain` (очередь пуста), без `params`                                                               |
 
 Env-переопределения: `CCS_CONTROLS_GROUP` (пустое значение выключает
-кнопки), `CCS_PROGRAM_SESSION_START`, `CCS_PROGRAM_SESSION_END`. Формат
-`params` кнопки `WITH_PARAMS` (одна строка JSON) — **[проверить]** с
-Expolight.
+кнопки), `CCS_PROGRAM_SESSION_START`, `CCS_PROGRAM_SESSION_END`,
+`CCS_PROGRAM_FADE`, `CCS_PROGRAM_IDLE`. Формат `params` кнопок
+`WITH_PARAMS` (одна строка JSON) — **[проверить]** с Expolight.
 
 ## `.env` для dry-run / live
 

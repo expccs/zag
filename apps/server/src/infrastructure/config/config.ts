@@ -13,7 +13,7 @@ import {
   CCS_STATE_GROUP_ID,
   CCS_STATE_PROGRAMS,
 } from '../ccs/ccs-ids';
-import type { ControlsConfig } from '../ccs/cloud-controls';
+import type { ControlButton, ControlsConfig } from '../ccs/cloud-controls';
 import type { FacadeConfig } from '../touch-designer/facade-gateway-factory';
 
 export interface StateConfig {
@@ -44,6 +44,13 @@ export interface ServerConfig {
 
 export const SERVER_CONFIG: InjectionToken<ServerConfig> =
   Symbol('ServerConfig');
+
+const CONTROL_ENV: Record<ControlButton, string> = {
+  sessionStart: 'CCS_PROGRAM_SESSION_START',
+  sessionEnd: 'CCS_PROGRAM_SESSION_END',
+  fade: 'CCS_PROGRAM_FADE',
+  idle: 'CCS_PROGRAM_IDLE',
+};
 
 const PROGRAM_ENV: Record<ZagFlag, string> = {
   techPause: 'CCS_PROGRAM_TECH_PAUSE',
@@ -211,18 +218,14 @@ export class ConfigLoader {
   ): ControlsConfig {
     const online = mode !== 'offline';
     const fallback = online ? CCS_CONTROLS_GROUP_ID : 'offline:controls';
+    const programs = {} as Record<ControlButton, string>;
+    for (const button of Object.keys(CONTROL_ENV) as ControlButton[]) {
+      const key = CONTROL_ENV[button];
+      programs[button] = reader.string(key, CCS_CONTROL_PROGRAMS[button]);
+    }
     return {
       groupID: reader.string('CCS_CONTROLS_GROUP', fallback) || null,
-      programs: {
-        sessionStart: reader.string(
-          'CCS_PROGRAM_SESSION_START',
-          CCS_CONTROL_PROGRAMS.sessionStart,
-        ),
-        sessionEnd: reader.string(
-          'CCS_PROGRAM_SESSION_END',
-          CCS_CONTROL_PROGRAMS.sessionEnd,
-        ),
-      },
+      programs,
     };
   }
 

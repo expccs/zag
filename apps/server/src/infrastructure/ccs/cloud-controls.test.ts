@@ -14,8 +14,16 @@ const flush = (): Promise<void> =>
 
 const CONFIG: ControlsConfig = {
   groupID: 'g1',
-  programs: { sessionStart: 'p-start', sessionEnd: 'p-end' },
+  programs: {
+    sessionStart: 'p-start',
+    sessionEnd: 'p-end',
+    fade: 'p-fade',
+    idle: 'p-idle',
+  },
 };
+
+const SESSION_JSON =
+  '{"mode":"comet","params":{"head":"#FF7D65","tail":"#4BABD5"},"durationMs":40000}';
 
 const START: FacadeCommand = {
   type: 'session:start',
@@ -34,7 +42,7 @@ const createControls = (config = CONFIG) => {
 };
 
 describe('CloudControls', () => {
-  it('runs the start button with the session as JSON and the end button bare', async () => {
+  it('runs one button per facade command, JSON for the WITH_PARAMS ones', async () => {
     const { cloud, controls } = createControls();
     await cloud.connect();
     controls.command({ ...START, type: 'fade', durationMs: 5000 });
@@ -46,21 +54,16 @@ describe('CloudControls', () => {
     });
     controls.command({ type: 'drain' });
     await flush();
+    const base = { projectUID: 'zag', groupID: 'g1' };
     assert.deepEqual(cloud.commands, [
       {
-        projectUID: 'zag',
-        groupID: 'g1',
-        programID: 'p-start',
-        params: [
-          '{"mode":"comet","params":{"head":"#FF7D65","tail":"#4BABD5"},"durationMs":40000}',
-        ],
+        ...base,
+        programID: 'p-fade',
+        params: [SESSION_JSON.replace('40000', '5000')],
       },
-      {
-        projectUID: 'zag',
-        groupID: 'g1',
-        programID: 'p-end',
-        params: undefined,
-      },
+      { ...base, programID: 'p-start', params: [SESSION_JSON] },
+      { ...base, programID: 'p-end', params: undefined },
+      { ...base, programID: 'p-idle', params: undefined },
     ]);
     assert.equal(
       controls.stream({
@@ -112,7 +115,7 @@ describe('CompositeFacade', () => {
     facade.command(START);
     facade.command({ type: 'drain' });
     await flush();
-    assert.equal(cloud.commands.length, 1);
+    assert.equal(cloud.commands.length, 2);
     assert.equal(
       facade.stream({
         type: 'touch:event',

@@ -138,9 +138,9 @@ CCS в фоне с ретраями логина; на каждом событи
 кнопок не пуст (константа `CCS_CONTROLS_GROUP_ID`, env может обнулить),
 `Application.provideFacade` оборачивает рендерер в
 `CompositeFacade` вместе с `CloudControls` (`infrastructure/ccs`): тот же
-порт поверх `CloudGateway.execCommand`, `session:start` → кнопка
-`WITH_PARAMS` с JSON сеанса, `session:end` → кнопка `COMMAND`, остальное
-игнорируется. `Application.start` вызывает `connect()`, `stop` —
+порт поверх `CloudGateway.execCommand`, `fade` / `session:start` → кнопки
+`WITH_PARAMS` с JSON сеанса, `session:end` / `drain` → кнопки `COMMAND`
+«Session end» / «Idle». `Application.start` вызывает `connect()`, `stop` —
 `close()`.
 
 `ZagSocketServer` держит `Map<userId, Set<Socket>>`: `notify*` доходят до
