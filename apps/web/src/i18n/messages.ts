@@ -50,6 +50,8 @@ export interface Instruction {
 export interface Messages {
   /** Label inside the language pill: the current language. */
   langLabel: string;
+  /** Tablet / desktop placeholder. Not in Figma, wording is ours. */
+  device: Notice;
   langSwitchHint: string;
   back: string;
   home: {
@@ -135,6 +137,12 @@ const PHOTOS = {
 
 const uk: Messages = {
   langLabel: 'UA',
+  device: {
+    title: 'Лише з телефону',
+    body:
+      'Застосунок працює тільки на смартфоні та лише перед фасадом галереї ' +
+      'ZAG. Відкрийте його з телефону, стоячи біля будівлі.',
+  },
   langSwitchHint: 'Switch to English',
   back: 'Назад',
   home: {
@@ -404,6 +412,12 @@ const uk: Messages = {
 
 const en: Messages = {
   langLabel: 'ENG',
+  device: {
+    title: 'Phone only',
+    body:
+      'The app works only on a smartphone and only in front of the ZAG ' +
+      'gallery facade. Open it on your phone while standing by the building.',
+  },
   langSwitchHint: 'Перемкнути на українську',
   back: 'Back',
   home: {

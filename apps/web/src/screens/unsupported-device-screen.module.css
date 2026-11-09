@@ -1,0 +1,76 @@
+/* Same frame as Home 8:3824: facade photo, logo strip, lang pill at
+   (317, 96), centred text, footer logos. Type: h3 Unbounded SemiBold 20.6
+   and body Montserrat 13.2 of the notices (design-system.md § 4).
+   The photo is the 2048 px source (`home-facade.jpg`), not the 393 px
+   render of Home: this screen is only ever seen on tablets and desktops.
+   The darkening of Home (`Rectangle 489`, radial gradient at 0.76,
+   design-system.md § 3) is laid over it in CSS. */
+.screen {
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  justify-content: center;
+  background:
+    radial-gradient(
+        ellipse 140% 55% at 50% 42%,
+        rgba(0, 0, 0, 0.76) 4%,
+        rgba(7, 7, 7, 0.71) 10%,
+        rgba(14, 14, 14, 0.67) 16%,
+        rgba(29, 29, 29, 0.57) 28%,
+        rgba(58, 58, 58, 0.38) 52%,
+        rgba(115, 115, 115, 0) 100%
+      )
+      center / cover no-repeat,
+    var(--color-black) url('/bg-home-large.jpg') center / cover no-repeat;
+}
+
+.column {
+  position: relative;
+  width: min(100%, var(--screen-width));
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: 0 var(--space-6);
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* On a wide screen the logo strip stays inside the phone-wide column
+   instead of spanning the viewport (ZagHeader breaks out by default). */
+.header > header {
+  width: 100%;
+  margin-left: 0;
+}
+
+.lang {
+  position: absolute;
+  top: calc(6rem + env(safe-area-inset-top));
+  right: 1.25rem;
+}
+
+.notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-unbounded);
+  font-weight: 600;
+  font-size: 1.2875rem;
+  line-height: normal;
+  text-shadow: 0 0.2188rem 0.2188rem var(--color-shadow);
+}
+
+.body {
+  margin: 0;
+  max-width: 20.3125rem;
+  font-family: var(--font-montserrat);
+  font-weight: 400;
+  font-size: 0.825rem;
+  line-height: normal;
+}

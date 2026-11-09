@@ -1,8 +1,10 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
+import { useIsPhone } from './hooks/use-is-phone';
 import { LanguageProvider } from './i18n/LanguageProvider';
 import { SocketProvider } from './socket/SocketProvider';
 import { HomeScreen } from './screens/HomeScreen';
+import { UnsupportedDeviceScreen } from './screens/UnsupportedDeviceScreen';
 
 // Mission is a long landing with its own photos: keep it out of the
 // initial chunk (vercel-react-best-practices: bundle-dynamic-imports).
@@ -29,12 +31,22 @@ const routes = (
   </Routes>
 );
 
+// A tablet or a desktop never reaches the routes (and never opens the
+// socket): the facade is driven from a phone standing in front of it.
+const Gate = () => {
+  const isPhone = useIsPhone();
+  if (!isPhone) return <UnsupportedDeviceScreen />;
+  return (
+    <SocketProvider>
+      <Suspense fallback={null}>{routes}</Suspense>
+    </SocketProvider>
+  );
+};
+
 export const App = () => (
   <BrowserRouter>
     <LanguageProvider>
-      <SocketProvider>
-        <Suspense fallback={null}>{routes}</Suspense>
-      </SocketProvider>
+      <Gate />
     </LanguageProvider>
   </BrowserRouter>
 );

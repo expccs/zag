@@ -83,6 +83,12 @@ Handoff log between agent sessions. Newest entry on top. See the
     `QueueView` has a landscape variant (no Figma frame: countdown chrome
     + the ring); a failed request returns to the setup with
     `state.failed`. Orientation lock now covers the whole turn.
+  - Phone-only gate: `useIsPhone` (coarse pointer and short side ≤ 500
+    px) in `App.tsx`; tablets / desktops get `UnsupportedDeviceScreen`
+    («Лише з телефону» / «Phone only», no Figma frame, design-system
+    § 11) and never open the socket. `VITE_ANY_DEVICE=true` bypasses it.
+    Its background is `public/bg-home-large.jpg` (1365 × 2048 from the
+    source photo) with the Home radial darkening as a CSS layer.
 - **Next step:** try on real phones (orientation lock, pointer capture,
   fade timing of the trail), then commit stages 2–4; geo-fence remains.
 - **Blockers / open questions:** the forward arrow on the landscape
