@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { ZagFlag } from '@zag/protocol';
+import type { ProgramGroup } from '../ports/cloud-gateway';
+import { FakeCloudClient } from '../../infrastructure/ccs/fake-cloud-client';
+import type { LogFields } from '../ports/logger';
+import { StructuredLogger } from '../../infrastructure/logging/structured-logger';
 import { ZagAppState } from './app-state';
-import { FakeCloudClient, type ProgramGroup } from './cloud-client';
-import { StructuredLogger, type LogFields } from './logger';
 
 interface LogRecord extends LogFields {
   level: string;

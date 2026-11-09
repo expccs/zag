@@ -1,11 +1,12 @@
 import { ZAG_FLAGS, type ZagFlag } from '@zag/protocol';
+import type { InjectionToken } from 'tsyringe';
 import {
-  CCS_DEFAULT_URL,
   CLOUD_MODES,
   type CloudConfig,
   type CloudMode,
-} from './cloud-client';
-import { CCS_STATE_GROUP_ID, CCS_STATE_PROGRAMS } from './ccs-ids';
+} from '../ccs/cloud-gateway-factory';
+import { CCS_DEFAULT_URL } from '../ccs/cloud-client';
+import { CCS_STATE_GROUP_ID, CCS_STATE_PROGRAMS } from '../ccs/ccs-ids';
 
 export interface StateConfig {
   /** `_id` of the CCS program group holding the app-state switches. */
@@ -26,6 +27,9 @@ export interface ServerConfig {
   cloud: CloudConfig;
   state: StateConfig;
 }
+
+export const SERVER_CONFIG: InjectionToken<ServerConfig> =
+  Symbol('ServerConfig');
 
 const PROGRAM_ENV: Record<ZagFlag, string> = {
   techPause: 'CCS_PROGRAM_TECH_PAUSE',

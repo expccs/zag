@@ -40,8 +40,10 @@ zag/
 │   │   ├── index.html
 │   │   ├── vite.config.ts
 │   │   └── package.json     # name: @zag/web
-│   └── server/              # Socket.IO-сервер
-│       ├── src/             # копия docs/backend/reference/*.ts
+│   └── server/              # Socket.IO-сервер (backend/server-architecture.md)
+│       ├── src/app/         # домен, порты, use cases
+│       ├── src/infrastructure/ # адаптеры: ccs, socket, http, logging, config
+│       ├── src/bootstrap.ts # композиционный корень
 │       ├── Dockerfile
 │       └── package.json     # name: @zag/server
 ├── packages/

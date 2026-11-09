@@ -4,19 +4,22 @@ import type { AddressInfo } from 'node:net';
 import { after, afterEach, before, describe, it } from 'node:test';
 import { Server } from 'socket.io';
 import { CCS_PROJECT_ID } from './ccs-ids';
+import type {
+  CloudGateway,
+  LoginData,
+  ProgramGroup,
+  ProgramReference,
+  ProgramStateChange,
+} from '../../app/ports/cloud-gateway';
+import type { LogFields } from '../../app/ports/logger';
+import { StructuredLogger } from '../logging/structured-logger';
 import {
   CloudClient,
-  CloudGatewayFactory,
   CloudProjectError,
-  FakeCloudClient,
   type CloudClientOptions,
-  type CloudGateway,
-  type LoginData,
-  type ProgramGroup,
-  type ProgramReference,
-  type ProgramStateChange,
 } from './cloud-client';
-import { StructuredLogger, type LogFields } from './logger';
+import { CloudGatewayFactory } from './cloud-gateway-factory';
+import { FakeCloudClient } from './fake-cloud-client';
 
 interface LogRecord extends LogFields {
   level: string;

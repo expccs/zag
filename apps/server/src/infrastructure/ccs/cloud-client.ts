@@ -1,81 +1,21 @@
-import { EventEmitter } from 'node:events';
 import { io, type Socket } from 'socket.io-client';
+import {
+  CloudEmitter,
+  type CloudGateway,
+  type CloudLogger,
+  type GeoCoordinates,
+  type LoginData,
+  type ProgramGroup,
+  type ProgramReference,
+  type ProgramStateChange,
+} from '../../app/ports/cloud-gateway';
 import { CCS_PROJECT_ID } from './ccs-ids';
-import type { Logger } from './logger';
 
 export const CCS_DEFAULT_URL = 'https://admin.expolightcontrols.net';
-
-export type CloudMode = 'live' | 'dry-run' | 'offline';
-
-export const CLOUD_MODES: readonly CloudMode[] = ['live', 'dry-run', 'offline'];
 
 export interface CloudCredentials {
   login: string;
   password: string;
-}
-
-export interface LoginData {
-  accessToken: string;
-  projectUID: string;
-  latitude: number;
-  longitude: number;
-  timezone: string;
-  accessLevel: number;
-}
-
-export interface ProgramReference {
-  projectUID: string;
-  groupID: string;
-  programID: string;
-  params?: number[];
-}
-
-export interface CommandProgram {
-  _id: string;
-  name: string;
-  type: 'COMMAND' | 'WITH_PARAMS' | 'SWITCH' | string;
-  /** null for stateless buttons (e.g. "Session start" / "Session end"). */
-  state: { value: number } | null;
-}
-
-export interface ProgramGroup {
-  _id: string;
-  name: string;
-  projectID: string;
-  main: boolean;
-  programs: CommandProgram[];
-}
-
-export interface ProgramStateChange {
-  programID: string;
-  value: number;
-  /** Sent by CCS in `programStateChange`; absent in synthetic changes. */
-  groupID?: string;
-}
-
-export interface GeoCoordinates {
-  latitude: number;
-  longitude: number;
-}
-
-export interface CloudEvents {
-  login: [data: LoginData];
-  connect: [];
-  disconnect: [reason: string];
-  reconnect: [attempt: number];
-  stateChange: [change: ProgramStateChange];
-}
-
-export type CloudLogger = Pick<Logger, 'info' | 'warn'>;
-
-export interface CloudGateway extends EventEmitter<CloudEvents> {
-  readonly projectUID: string | null;
-  readonly location: GeoCoordinates | null;
-  readonly isConnected: boolean;
-  connect(): Promise<void>;
-  getPrograms(): Promise<ProgramGroup[]>;
-  execCommand(reference: ProgramReference): Promise<unknown>;
-  close(): void;
 }
 
 export interface CloudClientOptions {
@@ -88,13 +28,6 @@ export interface CloudClientOptions {
   loginRetryMaxMs?: number;
   reconnectDelayMs?: number;
   reconnectDelayMaxMs?: number;
-}
-
-export interface CloudConfig {
-  mode: CloudMode;
-  url: string;
-  login: string;
-  password: string;
 }
 
 const DEFAULT_CONNECT_TIMEOUT_MS = 30_000;
@@ -112,7 +45,8 @@ export class CloudProjectError extends Error {
   }
 }
 
-export class CloudClient extends EventEmitter<CloudEvents> {
+/** `CloudGateway` adapter over the real CCS (REST login + socket.io). */
+export class CloudClient extends CloudEmitter implements CloudGateway {
   projectUID: string | null = null;
   location: GeoCoordinates | null = null;
   timezone: string | null = null;
@@ -337,93 +271,6 @@ export class CloudClient extends EventEmitter<CloudEvents> {
         reject(new Error(message));
       }, connectTimeoutMs);
       socket.once('connect', onConnect);
-    });
-  }
-}
-
-export interface FakeCloudOptions {
-  logger: CloudLogger;
-  projectUID?: string;
-  location?: GeoCoordinates;
-  groups?: ProgramGroup[];
-}
-
-export class FakeCloudClient extends EventEmitter<CloudEvents> {
-  readonly projectUID: string;
-  readonly location: GeoCoordinates;
-  readonly commands: ProgramReference[] = [];
-
-  private connected = false;
-  private readonly groups: ProgramGroup[];
-  private readonly logger: CloudLogger;
-
-  constructor(options: FakeCloudOptions) {
-    super();
-    this.logger = options.logger;
-    this.projectUID = options.projectUID ?? 'offline-project';
-    this.location = options.location ?? { latitude: 0, longitude: 0 };
-    this.groups = options.groups ?? [];
-  }
-
-  get isConnected(): boolean {
-    return this.connected;
-  }
-
-  async connect(): Promise<void> {
-    this.connected = true;
-    this.emit('login', {
-      accessToken: 'offline',
-      projectUID: this.projectUID,
-      latitude: this.location.latitude,
-      longitude: this.location.longitude,
-      timezone: 'UTC',
-      accessLevel: 0,
-    });
-    this.emit('connect');
-  }
-
-  async getPrograms(): Promise<ProgramGroup[]> {
-    return this.groups;
-  }
-
-  async execCommand(reference: ProgramReference): Promise<unknown> {
-    this.commands.push(reference);
-    this.logger.info('ccs offline execCommand', { reference });
-    return { success: true };
-  }
-
-  setProgramState(programID: string, value: number): void {
-    for (const group of this.groups) {
-      for (const program of group.programs) {
-        if (program._id === programID) program.state = { value };
-      }
-    }
-    this.emit('stateChange', { programID, value });
-  }
-
-  close(): void {
-    if (!this.connected) return;
-    this.connected = false;
-    this.emit('disconnect', 'io client disconnect');
-  }
-}
-
-/** Picks the gateway for `CCS_MODE`: fake for offline, real otherwise. */
-export class CloudGatewayFactory {
-  static create(
-    config: CloudConfig,
-    logger: CloudLogger,
-    offlineGroups: ProgramGroup[] = [],
-  ): CloudGateway {
-    if (config.mode === 'offline') {
-      return new FakeCloudClient({ logger, groups: offlineGroups });
-    }
-    const { login, password } = config;
-    return new CloudClient({
-      credentials: { login, password },
-      serverUrl: config.url,
-      execEnabled: config.mode === 'live',
-      logger,
     });
   }
 }

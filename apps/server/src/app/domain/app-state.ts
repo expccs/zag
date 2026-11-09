@@ -6,7 +6,7 @@ import type {
   ProgramGroup,
   ProgramReference,
   ProgramStateChange,
-} from './cloud-client';
+} from '../ports/cloud-gateway';
 
 export type FlagMap<F extends string> = Readonly<Record<F, boolean>>;
 

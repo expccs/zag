@@ -9,7 +9,8 @@ import {
   type ServerToClientEvents,
   type SocketData,
 } from '@zag/protocol';
-import type { Logger } from './logger';
+import type { ClientGateway } from '../../app/ports/client-gateway';
+import type { Logger } from '../../app/ports/logger';
 
 export type ZagServer = Server<
   ClientToServerEvents,
@@ -35,7 +36,8 @@ export interface SocketServerOptions {
   state: () => PublicState;
 }
 
-export class ZagSocketServer {
+/** `ClientGateway` adapter: Socket.IO over the shared http server. */
+export class ZagSocketServer implements ClientGateway {
   readonly io: ZagServer;
 
   private readonly logger: Logger;

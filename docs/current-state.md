@@ -5,6 +5,39 @@ Handoff log between agent sessions. Newest entry on top. See the
 
 ---
 
+- **Timestamp:** 2026-11-09T07:00:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:** `apps/server` re-laid out as hexagonal architecture
+  with a DI container (uncommitted, on `master`; see
+  `docs/backend/server-architecture.md`):
+  - `src/app/` — `domain/app-state.ts`, ports `cloud-gateway.ts`
+    (+ `CloudEmitter` base), `client-gateway.ts`, `logger.ts`, use cases
+    `state-sync-service.ts` (CCS wiring / sync / broadcast moved out of
+    `Application`) and `health-service.ts`.
+  - `src/infrastructure/` — `ccs/` (`cloud-client.ts`,
+    `fake-cloud-client.ts`, `cloud-gateway-factory.ts` with
+    `createOfflineGroup`, `ccs-ids.ts`), `socket/socket-server.ts`
+    (`implements ClientGateway`), `http/health-http-server.ts`,
+    `logging/structured-logger.ts`, `config/config.ts`.
+  - DI = tsyringe (user added `tsyringe` + `reflect-metadata`): typed
+    `InjectionToken` symbols next to each port (`LOGGER`, `CLOUD_GATEWAY`,
+    `CLIENT_GATEWAY`, `APP_INFO`) and contract (`SERVER_CONFIG`,
+    `HTTP_SERVER`); use cases are `@injectable()` with explicit `@inject`
+    on every parameter (no reliance on `emitDecoratorMetadata`);
+    `bootstrap.ts` = `Application.createContainer` → child container,
+    `instanceCachingFactory` adapters, `ContainerScoped` services;
+    `tsconfig.json` has `experimentalDecorators` + `emitDecoratorMetadata`.
+    Entry guarded by `require.main === module`. `eslint.config.js` forbids
+    `src/app` → infrastructure / di / socket.io / node:http imports.
+    Test glob quoted (`'src/**/*.test.ts'`) so nested tests run.
+  - New tests: `app/services/state-sync-service.test.ts`,
+    `bootstrap.test.ts` (whole offline graph via `/health` + port override
+    with a fake). 38 tests green; lint, typecheck, build OK; built server smoke-tested offline.
+- **Next step:** stage 2 continues on the new layout — geo-fence, session
+  queue, TouchDesigner as new ports + adapters; stage 4 on the web side.
+
+---
+
 - **Timestamp:** 2026-11-08T10:30:00Z
 - **Agent / model:** Claude Fable 5.1
 - **What changed:** Header logo is full-bleed (uncommitted, on `master`):

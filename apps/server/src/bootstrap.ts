@@ -1,88 +1,114 @@
+import 'reflect-metadata';
 import type { Server as HttpServer } from 'node:http';
-import { ZAG_FLAGS, type PublicState, type ZagFlag } from '@zag/protocol';
-import { ZagAppState } from './app-state';
 import {
-  CloudGatewayFactory,
-  type CloudGateway,
-  type ProgramGroup,
-} from './cloud-client';
-import { ConfigLoader, type ServerConfig, type StateConfig } from './config';
-import { HealthHttpServer, type HealthReport } from './http-server';
-import { StructuredLogger, type Logger } from './logger';
-import { ZagSocketServer } from './socket-server';
+  Lifecycle,
+  container as rootContainer,
+  instanceCachingFactory,
+  type DependencyContainer,
+} from 'tsyringe';
+import { ZagAppState } from './app/domain/app-state';
+import { APP_INFO } from './app/ports/app-info';
+import { CLIENT_GATEWAY } from './app/ports/client-gateway';
+import { CLOUD_GATEWAY } from './app/ports/cloud-gateway';
+import { LOGGER, type Logger } from './app/ports/logger';
+import { HealthService } from './app/services/health-service';
+import { StateSyncService } from './app/services/state-sync-service';
+import { CloudGatewayFactory } from './infrastructure/ccs/cloud-gateway-factory';
+import {
+  ConfigLoader,
+  SERVER_CONFIG,
+  type ServerConfig,
+} from './infrastructure/config/config';
+import {
+  HTTP_SERVER,
+  HealthHttpServer,
+} from './infrastructure/http/health-http-server';
+import { StructuredLogger } from './infrastructure/logging/structured-logger';
+import { ZagSocketServer } from './infrastructure/socket/socket-server';
 
 const SHUTDOWN_TIMEOUT_MS = 5_000;
 
-/** Composition root: wires config, CCS, app state, http and Socket.IO. */
+/**
+ * Composition root. Builds the dependency graph in a tsyringe child
+ * container and drives the lifecycle. Nothing else in the server knows
+ * about concrete adapters: `app/` sees only its ports (and the tsyringe
+ * decorators), `infrastructure/` implements them, and this file joins
+ * the two. Every injected parameter carries an explicit `@inject(token)`,
+ * so no `emitDecoratorMetadata` is needed (tsx / esbuild do not emit it).
+ */
 export class Application {
-  private readonly config: ServerConfig;
+  private readonly container: DependencyContainer;
   private readonly logger: Logger;
-  private readonly cloudLogger: Logger;
-  private readonly stateLogger: Logger;
-  private readonly cloud: CloudGateway;
-  private readonly state: ZagAppState;
-  private readonly httpServer: HttpServer;
-  private readonly sockets: ZagSocketServer;
-  private readonly version: string;
-  private readonly startedAt = Date.now();
 
-  constructor(config: ServerConfig, logger: Logger, version: string) {
-    this.config = config;
-    this.logger = logger;
-    this.version = version;
-    this.cloudLogger = logger.child({ module: 'ccs' });
-    this.stateLogger = logger.child({ module: 'state' });
-
-    const offlineGroups = [Application.offlineStateGroup(config.state)];
-    this.cloud = CloudGatewayFactory.create(
-      config.cloud,
-      this.cloudLogger,
-      offlineGroups,
-    );
-    this.state = new ZagAppState({
-      ...config.state,
-      logger: this.stateLogger,
-    }).bind(this.cloud);
-    this.httpServer = HealthHttpServer.create({ health: () => this.health() });
-    this.sockets = new ZagSocketServer(this.httpServer, {
-      allowedOrigins: config.allowedOrigins,
-      trustProxy: config.trustProxy,
-      logger,
-      state: () => this.publicState,
-    });
-    this.wire();
+  constructor(container: DependencyContainer) {
+    this.container = container;
+    this.logger = container.resolve(LOGGER);
   }
 
-  get publicState(): PublicState {
-    return this.state.publicState;
+  get httpServer(): HttpServer {
+    return this.container.resolve(HTTP_SERVER);
   }
 
   start(): void {
-    const { config } = this;
+    const { container } = this;
+    const config = container.resolve(SERVER_CONFIG);
+    const { version } = container.resolve(APP_INFO);
     this.httpServer.listen(config.port, () => {
       this.logger.info('listening', {
         port: config.port,
-        version: this.version,
+        version,
         allowedOrigins: config.allowedOrigins,
         ccsMode: config.cloud.mode,
       });
     });
-    // The server serves clients right away; CCS is joined in the background
-    // with login retries, so a CCS outage never blocks startup.
-    this.cloud
-      .connect()
-      .then(() => this.syncState())
-      .catch((error: Error) => {
-        this.cloudLogger.error('ccs connect failed', { error });
-      });
+    container.resolve(StateSyncService).start();
   }
 
   stop(signal: string): void {
+    const { container } = this;
     this.logger.info('shutting down', { signal });
-    this.cloud.close();
-    this.sockets.close();
+    container.resolve(StateSyncService).stop();
+    container.resolve(CLIENT_GATEWAY).close();
     this.httpServer.close(() => process.exit(0));
     setTimeout(() => process.exit(1), SHUTDOWN_TIMEOUT_MS).unref();
+  }
+
+  /**
+   * The production graph in a fresh child container (one per process or
+   * per test). Everything is a lazy singleton of that container; a test
+   * re-registers a token with a fake before the first `resolve`.
+   */
+  static createContainer(
+    config: ServerConfig,
+    logger: Logger,
+    version: string,
+  ): DependencyContainer {
+    const scoped = { lifecycle: Lifecycle.ContainerScoped };
+    const container = rootContainer.createChildContainer();
+    container.register(SERVER_CONFIG, { useValue: config });
+    container.register(LOGGER, { useValue: logger });
+    container.register(APP_INFO, {
+      useValue: { version, ccsMode: config.cloud.mode },
+    });
+    container.register(CLOUD_GATEWAY, {
+      useFactory: instanceCachingFactory(Application.provideCloud),
+    });
+    container.register(ZagAppState, {
+      useFactory: instanceCachingFactory(Application.provideState),
+    });
+    container.register(HTTP_SERVER, {
+      useFactory: instanceCachingFactory(Application.provideHttpServer),
+    });
+    container.register(CLIENT_GATEWAY, {
+      useFactory: instanceCachingFactory(Application.provideClients),
+    });
+    container.register(HealthService, { useClass: HealthService }, scoped);
+    container.register(
+      StateSyncService,
+      { useClass: StateSyncService },
+      scoped,
+    );
+    return container;
   }
 
   static main(): void {
@@ -91,7 +117,8 @@ export class Application {
       pretty: process.env.NODE_ENV !== 'production',
     });
     const version = process.env.APP_VERSION ?? 'dev';
-    const app = new Application(config, logger, version);
+    const container = Application.createContainer(config, logger, version);
+    const app = new Application(container);
     app.start();
 
     process.on('SIGINT', () => app.stop('SIGINT'));
@@ -105,85 +132,40 @@ export class Application {
     });
   }
 
-  // Offline: the fake CCS owns a state group built from the config so that
-  // sync works and the app is "synced" with the OFFLINE_INITIAL flags.
-  private static offlineStateGroup(state: StateConfig): ProgramGroup {
-    return {
-      _id: state.groupID,
-      name: 'offline app state',
-      projectID: 'offline-project',
-      main: false,
-      programs: ZAG_FLAGS.map((flag) => ({
-        _id: state.programs[flag],
-        name: flag,
-        type: 'SWITCH',
-        state: { value: state.initial[flag] ? 1 : 0 },
-      })),
-    };
+  private static provideCloud(container: DependencyContainer) {
+    const config = container.resolve(SERVER_CONFIG);
+    const logger = container.resolve(LOGGER).child({ module: 'ccs' });
+    const offline = CloudGatewayFactory.createOfflineGroup(config.state);
+    return CloudGatewayFactory.create(config.cloud, logger, [offline]);
   }
 
-  private wire(): void {
-    const { cloud, cloudLogger } = this;
-    cloud.on('login', (data) => {
-      cloudLogger.info('ccs login', {
-        projectUID: data.projectUID,
-        latitude: data.latitude,
-        longitude: data.longitude,
-        timezone: data.timezone,
-      });
-    });
-    cloud.on('connect', () => cloudLogger.info('ccs connected'));
-    cloud.on('disconnect', (reason) => {
-      cloudLogger.warn('ccs disconnected', { reason });
-    });
-    cloud.on('reconnect', (attempt) => {
-      cloudLogger.info('ccs reconnected', { attempt });
-      // Missed `programStateChange` events are recovered by a full resync.
-      this.syncState();
-    });
-    cloud.on('stateChange', (change) => {
-      cloudLogger.info('ccs program state', {
-        programID: change.programID,
-        value: change.value,
-      });
-    });
-
-    this.state.on('synced', () => this.publishState('synced', []));
-    this.state.on('change', (_flags, changed) => {
-      this.publishState('change', changed);
+  private static provideState(container: DependencyContainer) {
+    const config = container.resolve(SERVER_CONFIG);
+    const logger = container.resolve(LOGGER);
+    return new ZagAppState({
+      ...config.state,
+      logger: logger.child({ module: 'state' }),
     });
   }
 
-  private health(): HealthReport {
-    const { cloud, config } = this;
-    return {
-      ok: true,
-      version: this.version,
-      uptimeS: Math.round((Date.now() - this.startedAt) / 1000),
-      clients: this.sockets.clientsCount,
-      ccs: {
-        mode: config.cloud.mode,
-        connected: cloud.isConnected,
-        projectUID: cloud.projectUID,
-      },
-      state: this.publicState,
-    };
+  // `/health` resolves the report lazily per request: the health service
+  // needs the socket server, which needs this http server.
+  private static provideHttpServer(container: DependencyContainer) {
+    return HealthHttpServer.create({
+      health: () => container.resolve(HealthService).report(),
+    });
   }
 
-  private publishState(reason: string, changed: ZagFlag[]): void {
-    const state = this.publicState;
-    this.stateLogger.info('state update', { reason, changed, ...state });
-    this.sockets.broadcastState(state);
-  }
-
-  private syncState(): void {
-    this.cloud
-      .getPrograms()
-      .then((groups) => this.state.sync(groups))
-      .catch((error: Error) => {
-        this.stateLogger.error('state sync failed', { error });
-      });
+  private static provideClients(container: DependencyContainer) {
+    const config = container.resolve(SERVER_CONFIG);
+    const state = container.resolve(ZagAppState);
+    return new ZagSocketServer(container.resolve(HTTP_SERVER), {
+      allowedOrigins: config.allowedOrigins,
+      trustProxy: config.trustProxy,
+      logger: container.resolve(LOGGER),
+      state: () => state.publicState,
+    });
   }
 }
 
-Application.main();
+if (require.main === module) Application.main();

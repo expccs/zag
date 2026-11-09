@@ -37,7 +37,13 @@ In addition to the rule above, apply both:
 module-level functions (`const fn = () => {}`) or `createX()` factories;
 put logic on the class it belongs to as a `static` method (pure helpers,
 factories, `main`) or a `private` method. Composition root is the
-`Application` class in `bootstrap.ts`. This overrides the "functions as
+`Application` class in `bootstrap.ts`. Layout is hexagonal
+([`docs/backend/server-architecture.md`](docs/backend/server-architecture.md)):
+`src/app` (domain, ports, use cases) imports only its own ports;
+`src/infrastructure` implements them; wiring is tsyringe (typed tokens
+next to each port, explicit `@inject` on every parameter) registered in
+`bootstrap.ts` (eslint enforces the border).
+This overrides the "functions as
 const arrows" default of `js-conventions` for the server only; tests may
 keep small helper functions, but fakes (servers, gateways) are classes.
 

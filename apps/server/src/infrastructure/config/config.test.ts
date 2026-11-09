@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { CCS_STATE_GROUP_ID, CCS_STATE_PROGRAMS } from './ccs-ids';
+import { CCS_STATE_GROUP_ID, CCS_STATE_PROGRAMS } from '../ccs/ccs-ids';
 import { ConfigError, ConfigLoader } from './config';
 
 const ONLINE = {

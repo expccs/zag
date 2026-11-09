@@ -1,21 +1,5 @@
 import { inspect } from 'node:util';
-
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
-
-export type LogFields = Record<string, unknown>;
-
-/**
- * Console-compatible logger (same shape the reference modules expect via
- * `Pick<Console, 'log' | 'warn' | 'error'>`) that writes one JSON object
- * per line so Docker / journald / Loki can index the fields.
- */
-export interface Logger {
-  log(message: string, fields?: LogFields): void;
-  info(message: string, fields?: LogFields): void;
-  warn(message: string, fields?: LogFields): void;
-  error(message: string, fields?: LogFields): void;
-  child(fields: LogFields): Logger;
-}
+import type { LogFields, LogLevel, Logger } from '../../app/ports/logger';
 
 export type LogWriter = (line: string) => void;
 
@@ -25,6 +9,10 @@ export interface LoggerOptions {
   fields?: LogFields;
 }
 
+/**
+ * `Logger` adapter that writes one JSON object per line so Docker /
+ * journald / Loki can index the fields; `pretty` is for local `dev`.
+ */
 export class StructuredLogger implements Logger {
   private readonly write: LogWriter;
   private readonly pretty: boolean;

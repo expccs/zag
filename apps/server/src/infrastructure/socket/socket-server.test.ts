@@ -3,8 +3,9 @@ import { after, before, describe, it } from 'node:test';
 import type { AddressInfo } from 'node:net';
 import { io as connect, type Socket } from 'socket.io-client';
 import { AUTH_ERROR, type PublicState } from '@zag/protocol';
-import { HealthHttpServer } from './http-server';
-import { StructuredLogger, type LogFields } from './logger';
+import { HealthHttpServer } from '../http/health-http-server';
+import type { LogFields } from '../../app/ports/logger';
+import { StructuredLogger } from '../logging/structured-logger';
 import { ZagSocketServer } from './socket-server';
 
 interface LogRecord extends LogFields {

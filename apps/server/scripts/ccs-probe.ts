@@ -2,9 +2,10 @@
 // `_id`s for CCS_STATE_GROUP / CCS_PROGRAM_* can be copied into .env.
 // Reads CCS_* from the root .env; always runs in dry-run (never executes).
 //   npm run ccs:probe -w @zag/server
-import { CloudGatewayFactory, type ProgramGroup } from '../src/cloud-client';
-import { ConfigLoader } from '../src/config';
-import { StructuredLogger } from '../src/logger';
+import type { ProgramGroup } from '../src/app/ports/cloud-gateway';
+import { CloudGatewayFactory } from '../src/infrastructure/ccs/cloud-gateway-factory';
+import { ConfigLoader } from '../src/infrastructure/config/config';
+import { StructuredLogger } from '../src/infrastructure/logging/structured-logger';
 
 class CcsProbe {
   static async run(): Promise<void> {
