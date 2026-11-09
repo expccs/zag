@@ -63,8 +63,6 @@ const TOUCH = {
   x: 0.5,
   y: 0.5,
   touch: 1 as const,
-  swipe: 0 as const,
-  direction: 'none' as const,
 };
 
 describe('TouchDesignerClient', () => {

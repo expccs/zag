@@ -111,8 +111,6 @@ export interface SessionEnd {
   reason: SessionEndReason;
 }
 
-export type SwipeDirection = 'left' | 'right' | 'none';
-
 export interface TouchEvent {
   /**
    * Normalised to [0, 1] within the drawing area, origin in the
@@ -121,9 +119,8 @@ export interface TouchEvent {
    */
   x: number;
   y: number;
+  /** 1 while the finger is down (touch, then moves), 0 on release. */
   touch: 0 | 1;
-  swipe: 0 | 1;
-  direction: SwipeDirection;
 }
 
 export const EVENTS = {

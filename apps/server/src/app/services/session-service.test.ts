@@ -122,8 +122,6 @@ const TOUCH: TouchEvent = {
   x: 0.5,
   y: 0.5,
   touch: 1,
-  swipe: 0,
-  direction: 'none',
 };
 
 describe('SessionService', () => {

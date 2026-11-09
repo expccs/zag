@@ -207,7 +207,7 @@ describe('Application (composition root)', () => {
     const start1 = once<SessionInfo>(c1, 'session:start');
     const t1 = (await c1.emitWithAck('session:request', {
       mode: 'comet',
-      params: { color: '#FF4848' },
+      params: { head: '#FF4848', tail: '#FF9F3F' },
     })) as SessionRequestResult;
     assert.ok(t1.success && t1.position === 0 && t1.durationMs === 150);
     assert.ok(t1.waitMs > 0 && t1.waitMs <= 30, `countdown ${t1.waitMs}`);
@@ -217,8 +217,6 @@ describe('Application (composition root)', () => {
       x: 0.25,
       y: 0.75,
       touch: 1,
-      swipe: 0,
-      direction: 'none',
     });
     const dup = await c1.emitWithAck('session:request', {
       mode: 'comet',

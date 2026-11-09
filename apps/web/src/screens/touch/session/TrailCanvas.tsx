@@ -1,6 +1,10 @@
 import { useEffect, useImperativeHandle, useRef, type Ref } from 'react';
 import type { SessionRequest, TouchEvent } from '@zag/protocol';
-import { BRUSH_WIDTHS, PALETTES } from '../../../interactive/modes';
+import {
+  BRUSH_WIDTHS,
+  DEFAULT_COLORS,
+  PALETTES,
+} from '../../../interactive/modes';
 import styles from './landscape.module.css';
 
 export interface TrailHandle {
@@ -27,6 +31,11 @@ const COMET_WIDTH = 7;
 const PALETTE_WIDTH = 9;
 const PALETTE_STROKES_KEPT = 2;
 
+const tailColor = (request: SessionRequest): string => {
+  const value = request.params.tail;
+  return typeof value === 'string' ? value : DEFAULT_COLORS.tail;
+};
+
 const randomHue = (): string =>
   `hsl(${Math.floor(Math.random() * 360)} 100% 65%)`;
 
@@ -37,9 +46,11 @@ const paramNumber = (request: SessionRequest, key: string): number => {
 
 /**
  * Local echo of the stroke in the mode's colours (shared-modules.md § 4:
- * no server preview, the client draws for itself). Comet and Milky Way
- * fade out over a couple of seconds like the facade; Palette keeps the
- * last two strokes and cycles the palette, as the instructions describe.
+ * no server preview, the client draws for itself). Comet draws only the
+ * trail in the tail colour (the head colour is for the facade); Comet and
+ * Milky Way fade out over a couple of seconds like the facade; Palette
+ * keeps the last two strokes and cycles the palette, as the instructions
+ * describe.
  */
 class TrailRenderer {
   private readonly context: CanvasRenderingContext2D;
@@ -121,10 +132,8 @@ class TrailRenderer {
   }
 
   private nextColor(): string {
-    const { mode, params } = this.request;
-    if (mode === 'comet') {
-      return typeof params.color === 'string' ? params.color : '#FF4848';
-    }
+    const { mode } = this.request;
+    if (mode === 'comet') return tailColor(this.request);
     if (mode === 'milky-way') return randomHue();
     const palette =
       PALETTES[paramNumber(this.request, 'palette')] ?? PALETTES[0];

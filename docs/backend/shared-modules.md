@@ -82,14 +82,14 @@ URL `EXTERNAL_WS_URL`, по умолчанию `ws://10.11.113.101:85`). tv-towe
 
 ### 1.5 Очередь сеансов (`AsyncQueue`)
 
-| Аспект                       | tv-tower-back                                                                                                  | kutaisi-public                                                 | Унифицировано                                                                                            |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Аспект                       | tv-tower-back                                                                                                  | kutaisi-public                                                 | Унифицировано                                                                                                                                                     |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Пауза между пользователями   | фейковая задача `Fade` 5 с без `user`                                                                          | фейковая задача `fade` 15 с                                    | ход пользователя = цепочка задач `fade` (`FADE_MS`, 5 с) → `session`; `fade` уходит в TD, клиент видит отсчёт (`queue:update`, `position: 0`); пауз без задач нет |
-| Удаление при дисконнекте     | `splice(index-1, 2)` — удаляет **соседнюю** задачу, если `Fade` не стоит перед ней (index 0 → `splice(-1, 2)`) | фильтр по `user.id`                                            | `remove(userId)`: ждущих — фильтром, текущего — `skipCurrent()`                                          |
-| Прерывание текущего          | нет                                                                                                            | через внешние переменные `currentInteractiveNext` в `index.ts` | `skipCurrent()` внутри очереди                                                                           |
-| Время ожидания               | сумма `duration` впереди + остаток текущей                                                                     | то же + `currentTaskFinishAfter()`                             | `placeOf(userId)`: остаток текущей задачи + задачи впереди (fade и сеансы); событие `update` для всех ждущих |
-| Кратковременный разрыв связи | место теряется сразу                                                                                           | то же                                                          | grace-период `DISCONNECT_GRACE_MS` (10 с) в socket-слое                                                  |
-| Порядок событий              | синхронно внутри `add()`                                                                                       | то же                                                          | `start`/`finish`/`update`/`drain` через `queueMicrotask`, чтобы ack на запрос уходил раньше push-событий |
+| Удаление при дисконнекте     | `splice(index-1, 2)` — удаляет **соседнюю** задачу, если `Fade` не стоит перед ней (index 0 → `splice(-1, 2)`) | фильтр по `user.id`                                            | `remove(userId)`: ждущих — фильтром, текущего — `skipCurrent()`                                                                                                   |
+| Прерывание текущего          | нет                                                                                                            | через внешние переменные `currentInteractiveNext` в `index.ts` | `skipCurrent()` внутри очереди                                                                                                                                    |
+| Время ожидания               | сумма `duration` впереди + остаток текущей                                                                     | то же + `currentTaskFinishAfter()`                             | `placeOf(userId)`: остаток текущей задачи + задачи впереди (fade и сеансы); событие `update` для всех ждущих                                                      |
+| Кратковременный разрыв связи | место теряется сразу                                                                                           | то же                                                          | grace-период `DISCONNECT_GRACE_MS` (10 с) в socket-слое                                                                                                           |
+| Порядок событий              | синхронно внутри `add()`                                                                                       | то же                                                          | `start`/`finish`/`update`/`drain` через `queueMicrotask`, чтобы ack на запрос уходил раньше push-событий                                                          |
 
 ---
 
@@ -168,17 +168,17 @@ CCS ──socket.io──▶ CloudClient ──stateChange──▶ AppState ─
 (как в Кутаиси, 8–64 символа). Невалидный `userId` → `connect_error`
 с сообщением `EAUTH`.
 
-| Направление                         | Событие           | Данные                                                            | Ответ (ack)                                                                                                                                                                     |
-| ----------------------------------- | ----------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| S→C при подключении и при изменении | `state:update`    | `PublicState`                                                     | —                                                                                                                                                                               |
-| C→S                                 | `state:get`       | —                                                                 | `PublicState`                                                                                                                                                                   |
-| C→S                                 | `geo:check`       | `{ latitude, longitude, accuracy? }`                              | `{ allowed, distanceM, reason }`; `reason`: `ok` / `too-far` / `no-center` / `invalid` / `disabled`                                                                             |
-| C→S                                 | `session:request` | `{ mode: 'comet' \| 'milky-way' \| 'palette', params }`           | `{ success: true, sessionId, waitMs, position, durationMs }` или `{ success: false, code }`; `code`: `ENOTALLOWED` (экран не `interactive`), `EBADMODE`, `EQUEUED`, `EINTERNAL` |
-| C→S                                 | `session:cancel`  | —                                                                 | `{ success: true, removed }`                                                                                                                                                    |
-| S→C                                 | `queue:update`    | `{ waitMs, position }`                                            | —                                                                                                                                                                               |
-| S→C                                 | `session:start`   | `{ sessionId, mode, durationMs, endsAt }`                         | —                                                                                                                                                                               |
-| S→C                                 | `session:end`     | `{ reason: 'completed' \| 'skipped' }`                            | —                                                                                                                                                                               |
-| C→S                                 | `touch:event`     | `{ x, y, touch: 0\|1, swipe: 0\|1, direction }`, `x`/`y` ∈ [0, 1], ноль в **левом нижнем** углу (UV: `y` растёт вверх) | —                                                                                                                                                                               |
+| Направление                         | Событие           | Данные                                                                                         | Ответ (ack)                                                                                                                                                                     |
+| ----------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S→C при подключении и при изменении | `state:update`    | `PublicState`                                                                                  | —                                                                                                                                                                               |
+| C→S                                 | `state:get`       | —                                                                                              | `PublicState`                                                                                                                                                                   |
+| C→S                                 | `geo:check`       | `{ latitude, longitude, accuracy? }`                                                           | `{ allowed, distanceM, reason }`; `reason`: `ok` / `too-far` / `no-center` / `invalid` / `disabled`                                                                             |
+| C→S                                 | `session:request` | `{ mode: 'comet' \| 'milky-way' \| 'palette', params }`                                        | `{ success: true, sessionId, waitMs, position, durationMs }` или `{ success: false, code }`; `code`: `ENOTALLOWED` (экран не `interactive`), `EBADMODE`, `EQUEUED`, `EINTERNAL` |
+| C→S                                 | `session:cancel`  | —                                                                                              | `{ success: true, removed }`                                                                                                                                                    |
+| S→C                                 | `queue:update`    | `{ waitMs, position }`                                                                         | —                                                                                                                                                                               |
+| S→C                                 | `session:start`   | `{ sessionId, mode, durationMs, endsAt }`                                                      | —                                                                                                                                                                               |
+| S→C                                 | `session:end`     | `{ reason: 'completed' \| 'skipped' }`                                                         | —                                                                                                                                                                               |
+| C→S                                 | `touch:event`     | `{ x, y, touch: 0\|1 }`, `x`/`y` ∈ [0, 1], ноль в **левом нижнем** углу (UV: `y` растёт вверх) | —                                                                                                                                                                               |
 
 Правила:
 
@@ -219,9 +219,7 @@ CCS ──socket.io──▶ CloudClient ──stateChange──▶ AppState ─
   "sessionId": "…",
   "x": 0.4213,
   "y": 0.7712,
-  "touch": 1,
-  "swipe": 0,
-  "direction": "none"
+  "touch": 1
 }
 ```
 
@@ -229,9 +227,9 @@ CCS ──socket.io──▶ CloudClient ──stateChange──▶ AppState ─
 
 ```json
 { "type": "fade", "sessionId": "…", "mode": "comet",
-  "params": { "color": "#FF4848" }, "durationMs": 5000, "timestamp": "…" }
+  "params": { "head": "#FF4848", "tail": "#FF9F3F" }, "durationMs": 5000, "timestamp": "…" }
 { "type": "session:start", "sessionId": "…", "mode": "comet",
-  "params": { "color": "#FF4848" }, "durationMs": 40000, "timestamp": "…" }
+  "params": { "head": "#FF4848", "tail": "#FF9F3F" }, "durationMs": 40000, "timestamp": "…" }
 { "type": "session:end", "sessionId": "…", "reason": "completed", "timestamp": "…" }
 { "type": "drain", "timestamp": "…" }
 ```
@@ -245,9 +243,10 @@ CCS ──socket.io──▶ CloudClient ──stateChange──▶ AppState ─
 Между ходами пауз нет: следующий `fade` уходит сразу за `session:end`.
 Типы в `apps/server/src/app/ports/facade-gateway.ts`.
 
-`params` по режимам из дизайна: `comet` → `color` (hex из палитры),
-`milky-way` → `width` (индекс ширины кисти 0–3), `palette` → `palette`
-(индекс 0–3, см. `docs/design/design-system.md` §2). Формат совместим по
+`params` по режимам: `comet` → `head` и `tail` (hex ядра кометы и её
+хвоста, оба с колеса цвета), `milky-way` → `width` (индекс ширины кисти
+0–2), `palette` → `palette` (индекс 0–3, см.
+`docs/design/design-system.md` §2). Формат совместим по
 духу с Кутаиси (`events-documentation.md` там), но имена типов новые,
 согласовать с оператором TD до интеграции.
 
@@ -276,10 +275,10 @@ true })` запускается только когда `flags.locationRestricti
   области фасада, нормализация в [0, 1] относительно неё с нулём в левом
   нижнем углу (`y = 1 − clientY/height`, как UV в TouchDesigner), `touch: 1` на
   старт и движение (движения не чаще 33 мс, `socket.volatile.emit`),
-  `touch: 0` на отпускание со свайпом (`|Δx| ≥ 0.15` за ≤ 600 мс →
-  `left` / `right`). Один палец. Локальный след рисуется на canvas
-  (`TrailCanvas`): комета и Чумацький шлях гаснут за ~2 с, палитра держит
-  две последние линии и перебирает цвета палитры.
+  `touch: 0` на отпускание. Один палец. Локальный след рисуется на canvas
+  (`TrailCanvas`): комета рисует только хвост цветом `tail` (ядро `head`
+  видно лишь на фасаде), комета и Чумацький шлях гаснут за ~2 с, палитра
+  держит две последние линии и перебирает цвета палитры.
 - Поток экранов интерактива — вложенные роуты `/touch` (layout с сокетом и
   гейтом по `state:update`): `/touch` режимы → `/touch/:mode` инструкция →
   `/touch/:mode/setup` настройка → `/touch/session`. Последний рисуется из

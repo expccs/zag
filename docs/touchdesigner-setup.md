@@ -1,142 +1,116 @@
-TD отримує два види повідомлень через один WebSocket-сервер:
+# TouchDesigner: протокол Public app server → TD
 
-1. **Команди** — від ExpoLight CCS, стандартний протокол пристрою
-   `Touch`. Оператор натискає кнопки в CCS або їх викликає Public app server.
-2. **Потік точок** — напряму від Public app server, поки триває сеанс
-   малювання.
+Public app server (`apps/server`) сам підключається до WebSocket-сервера
+TD у локальній мережі (`TD_WS_URL`, наприклад `ws://192.168.1.50:85`) і
+надсилає JSON-повідомлення двох видів в одне з'єднання:
 
-Розрізняти за полем `request`: `"run"` — команда, `"stream"` — точка.
+1. **Команди** — етапи сеансу: `fade`, `session:start`, `session:end`,
+   `drain`. Буферизуються, поки TD недоступний (останні 32), і
+   досилаються після реконекту; мають поле `timestamp` (ISO 8601).
+2. **Потік точок** `touch:event` — поки триває сеанс малювання. Без
+   буфера: якщо з'єднання немає, точки відкидаються.
 
-## 1. Команди (група `public_app`)
+Розрізняти за полем `type`. **Відповідати нічого не потрібно** — TD не
+надсилає жодних повідомлень; сервер лише пінгує з'єднання (WebSocket ping
+кожні 30 с, без pong за 30 с — переконект з паузою 1–10 с). CCS у цій
+схемі не бере участі: кнопки «Public app controls» у проєкті ZAG сервер
+не натискає (чи потрібні вони взагалі — відкрите питання до Expolight).
 
-У нативному інтерфейсі TD має бути група `public_app` з чотирма
-командами. CCS запитує їх список під час підключення, і до них
-прив'язуються чотири кнопки типу `WITH_PARAMS` у проєкті ZAG.
+Реалізація: `apps/server/src/infrastructure/touch-designer/touch-designer-client.ts`,
+типи повідомлень — `apps/server/src/app/ports/facade-gateway.ts`.
 
-Відповідь на запит списку:
+## 1. Команди
 
-```json
-→ { "request": "content", "payload": { "destination": "public_app" } }
-← { "request": "content", "payload": { "destination": "public_app",
-    "content": ["session_start", "session_end", "fade", "idle"] } }
-```
+| Команда | Коли приходить | Поля | Що робити на фасаді |
+| --- | --- | --- | --- |
+| `fade` | хід користувача почався: за `durationMs` (5000 мс, `FADE_MS`) почнеться його сеанс; на телефоні в цей час відлік | `sessionId`, `mode`, `params`, `durationMs` | анімація переходу з чергового режиму до сцени режиму; через `durationMs` прийде `session:start` з тим самим `sessionId` |
+| `session:start` | відлік минув, користувач малює **просто зараз** | `sessionId`, `mode`, `params`, `durationMs` (40 000, `SESSION_MS`) | сцена режиму з параметрами вже має бути готова; точки підуть одразу |
+| `session:end` | слот вичерпано (`completed`) або хід перервано (`skipped`: скасування, обрив зв'язку, техпауза) | `sessionId`, `reason` | зупинити приймання точок, очистити полотно сеансу; якщо наступний користувач чекає — одразу прийде його `fade` |
+| `drain` | черга порожня (після останнього `session:end`) | — | черговий режим фасаду |
 
-| Команда | Коли приходить | `params` | Що робити на фасаді |
-|---|---|---|---|
-| `session_start` | черга дійшла до користувача; телефон уже повернуто, відлік минув — він починає малювати **просто зараз** | `[json]` — один рядок `{ "mode", "params", "durationMs" }` | увімкнути сцену режиму з параметрами; точки підуть одразу після відповіді |
-| `session_end` | слот вичерпано або сеанс перервано | `["completed" \| "skipped" \| "aborted"]` | зупинити приймання точок, очистити полотно сеансу |
-| `fade` | після `session_end`, якщо чекає наступний користувач | `[durationMs]` | анімація переходу; через `durationMs` мс прийде наступний `session_start` |
-| `idle` | черга порожня або інтерактив вимкнено | `[]` | черговий режим фасаду |
-
-**На кожну команду TD зобов'язаний відповісти** тими самими `destination`
-і `content`, інакше CCS через 5 с поверне таймаут і сеанс на телефоні
-скасується:
-
-```json
-← { "request": "run", "payload": { "destination": "public_app", "content": "session_start" } }
-```
-
-`session_start` приходить, коли всі відліки на телефоні вже минули й
-користувач починає інтерактив. Одразу після відповіді TD на цю команду
-починають надходити точки, тому сцену потрібно ввімкнути миттєво, без
-власних затримок і анімацій входу. Час на підготовку є раніше: між
-`fade` і `session_start` минає `durationMs` із `fade`, а перший
-користувач після `idle` чекає чергу й відлік на телефоні.
+Між ходами пауз немає: наступний `fade` іде одразу за `session:end`.
+Якщо хід скасовано під час fade, після `fade` прийде `session:end` з
+`reason: "skipped"` **без** `session:start`.
 
 ### Приклади
 
-`session_start`, режим «Комета» (перша ітерація — лише він):
+`fade` і `session:start`, режим «Комета» (перша ітерація — лише він):
 
 ```json
-{ "request": "run",
-  "payload": { "destination": "public_app", "command": "scene",
-               "content": "session_start",
-               "params": ["{\"mode\":\"comet\",\"params\":{\"color\":\"#62D5FF\"},\"durationMs\":40000}"] } }
+{ "type": "fade", "sessionId": "0b3f…", "mode": "comet",
+  "params": { "head": "#FF7D65", "tail": "#4BABD5" },
+  "durationMs": 5000, "timestamp": "2026-11-09T18:20:11.512Z" }
+{ "type": "session:start", "sessionId": "0b3f…", "mode": "comet",
+  "params": { "head": "#FF7D65", "tail": "#4BABD5" },
+  "durationMs": 40000, "timestamp": "2026-11-09T18:20:16.514Z" }
 ```
 
-Після `JSON.parse(params[0])`:
+`params` кометы: `head` — колір ядра, `tail` — колір шлейфу, обидва hex
+`#RRGGBB` у верхньому регістрі з колірного кола на телефоні.
+
+Інші режими прийдуть тими самими повідомленнями, змінюється лише
+`params` (у застосунку поки приховані):
 
 ```json
-{ "mode": "comet", "params": { "color": "#62D5FF" }, "durationMs": 40000 }
+{ "mode": "milky-way", "params": { "width": 1 } }
+{ "mode": "palette",   "params": { "palette": 2 } }
 ```
 
-`color` — hex `#RRGGBB` у верхньому регістрі, обраний користувачем на
-колірному колі. `durationMs` — тривалість слота, за замовчуванням 40 000.
+`width` — індекс товщини пензля 0–2 (тонкий → товстий), `palette` —
+індекс палітри 0–3 (`docs/design/design-system.md` § 2):
+`#2C45E6 #62D5FF #9B2AFF`, `#F9FF46 #1B8700 #9DF200`,
+`#FF4848 #FF9F3F #FFFF2F`, `#9D2CFF #FF5CE1 #F300B6`.
 
-Інші режими прийдуть пізніше тим самим повідомленням, змінюється лише
-вміст рядка:
+`session:end` і `drain`:
 
 ```json
-{ "mode": "milky-way", "params": { "width": 2 },   "durationMs": 40000 }
-{ "mode": "palette",   "params": { "palette": 2 }, "durationMs": 40000 }
+{ "type": "session:end", "sessionId": "0b3f…", "reason": "completed",
+  "timestamp": "2026-11-09T18:20:56.520Z" }
+{ "type": "drain", "timestamp": "2026-11-09T18:20:56.521Z" }
 ```
-
-`session_end`:
-
-```json
-{ "request": "run",
-  "payload": { "destination": "public_app", "command": "scene",
-               "content": "session_end", "params": ["completed"] } }
-```
-
-`fade`:
-
-```json
-{ "request": "run",
-  "payload": { "destination": "public_app", "command": "scene",
-               "content": "fade", "params": [5000] } }
-```
-
-`idle`:
-
-```json
-{ "request": "run",
-  "payload": { "destination": "public_app", "command": "scene",
-               "content": "idle", "params": [] } }
-```
-
-Поле `command: "scene"` CCS підставляє сам, його можна ігнорувати.
 
 ## 2. Потік точок
 
-Іде лише між відповіддю на `session_start` і `session_end`. Public app
-server надсилає його окремим WS-з'єднанням до того самого сервера TD.
-Відповідей не потрібно, TD нічого не надсилає у відповідь.
+Іде лише між `session:start` і `session:end` того самого `sessionId`.
+Одне повідомлення на подію пальця:
 
 ```json
-{ "request": "stream", "payload": { "type": "stroke:begin", "point": { "x": 0.42, "y": 0.77 } } }
-{ "request": "stream", "payload": { "type": "stroke:move",  "point": { "x": 0.44, "y": 0.75 } } }
-{ "request": "stream", "payload": { "type": "stroke:move",  "point": { "x": 0.47, "y": 0.71 } } }
-{ "request": "stream", "payload": { "type": "stroke:end",   "point": { "x": 0.61, "y": 0.58 } } }
+{ "type": "touch:event", "sessionId": "0b3f…", "x": 0.42, "y": 0.23, "touch": 1 }
+{ "type": "touch:event", "sessionId": "0b3f…", "x": 0.44, "y": 0.25, "touch": 1 }
+{ "type": "touch:event", "sessionId": "0b3f…", "x": 0.61, "y": 0.42, "touch": 0 }
 ```
 
-- `x`, `y` — від 0 до 1 відносно зони малювання на телефоні, початок
-  координат у лівому верхньому куті. Масштабування на фасад — на боці
-  TD.
-- `stroke:begin` — палець торкнувся екрана, `stroke:move` — веде,
-  `stroke:end` — відпустив. Одна лінія = `begin`, N × `move`, `end`.
-- `stroke:move` приходить не частіше 20 разів на секунду, `begin` і
-  `end` без обмежень.
-- Для режиму «Комета»: `stroke:begin` запускає комету в точці,
-  `stroke:move` тягне її, `stroke:end` відпускає, шлейф згасає сам.
-  Лінії не залишаються.
-- Режим, колір та інші параметри в потоці не передаються — вони відомі
-  з останнього `session_start`.
+- `x`, `y` — від 0 до 1 відносно зображення фасаду на телефоні, **початок
+  координат у лівому нижньому куті** (UV: `x` праворуч, `y` вгору).
+  Масштабування на фасад — на боці TD.
+- `touch: 1` — палець на екрані (перша подія — дотик, далі рух),
+  `touch: 0` — відпустив. Одна лінія = перша подія з `touch: 1`, N × рух,
+  одна подія з `touch: 0`.
+- Рух приходить не частіше ~30 разів на секунду; дотик і відпускання без
+  обмежень. Одночасно малює один палець.
+- Для «Комети»: дотик запускає комету в точці, рух тягне її, відпускання
+  відпускає, шлейф згасає сам. Лінії не залишаються.
+- Режим і кольори в потоці не передаються — вони відомі з `fade` /
+  `session:start` з тим самим `sessionId`.
 
 ## 3. Послідовність на фасаді
 
 ```
-idle ─▶ session_start ─▶ stroke:* … ─▶ session_end ─┬▶ fade ─▶ session_start ─▶ …
-                                                    └▶ idle
+drain ─▶ fade ─▶ session:start ─▶ touch:event … ─▶ session:end ─┬▶ fade ─▶ session:start ─▶ …
+                                                                └▶ drain
 ```
 
-- У кожен момент не більше одного сеансу; ідентифікаторів сеансу немає.
-- Після `session_end` потік може ще кілька повідомлень «долетіти» —
-  ігнорувати.
-- `session_end` та `idle` можуть прийти без попереднього
-  `session_start` (наприклад, інтерактив вимкнув оператор) — обробляти
-  ідемпотентно, без помилок.
-- Якщо TD не відповів на `session_start` за 5 с, Public app server
-  скасує сеанс і все одно надішле `session_end` з `"aborted"`.
-- `durationMs` у `session_start` відлічується з моменту відповіді TD; після
-  його закінчення прийде `session_end` з `"completed"`.
+- У кожен момент не більше одного сеансу; `sessionId` спільний для
+  `fade`, `session:start`, `touch:event` і `session:end` одного ходу.
+- Після `session:end` потік може ще кілька повідомлень «долетіти» —
+  ігнорувати за `sessionId`.
+- `session:end` може прийти без `session:start` (хід скасовано під час
+  fade), `drain` — без попереднього сеансу (інтерактив вимкнув оператор,
+  рестарт сервера). Обробляти ідемпотентно, без помилок.
+- `durationMs` відлічується сервером з моменту надсилання команди;
+  після його закінчення прийде `session:end` з `"completed"`.
+- Після реконекту сервер досилає накопичені команди (до 32) з їхніми
+  оригінальними `timestamp`; точки за час обриву втрачені.
+
+Загальний опис модулів і Socket.IO-протоколу телефона —
+[`backend/shared-modules.md`](backend/shared-modules.md) § 4–5.

@@ -30,12 +30,54 @@
   margin-top: 0.5rem;
 }
 
+/* head / tail choice of the comet: two glass pills (§ 5.1), not in Figma */
+.parts {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.part {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.3125rem;
+  padding: 0 1rem 0 0.75rem;
+  border-radius: 1.1563rem;
+  color: var(--color-text);
+  cursor: pointer;
+  font-family: var(--font-unbounded);
+  font-weight: 400;
+  font-size: 0.8125rem;
+  line-height: normal;
+  transition:
+    background 120ms ease-out,
+    border-color 120ms ease-out;
+}
+
+.part[aria-checked='true'] {
+  background: rgba(217, 217, 217, 0.3);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.part:focus-visible {
+  outline: 0.125rem solid rgba(255, 255, 255, 0.6);
+  outline-offset: 0.125rem;
+}
+
+.swatch {
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 50%;
+  box-shadow: 0 0 0 0.0625rem rgba(255, 255, 255, 0.6);
+}
+
 /* colour wheel */
 .wheel {
   position: relative;
   width: 18.625rem;
   height: 18.625rem;
-  margin-top: 3.4375rem;
+  margin-top: 1.5rem;
   border-radius: 50%;
   touch-action: none;
   cursor: crosshair;
@@ -55,6 +97,11 @@
   border-radius: 50%;
   transform: translate(-50%, -50%);
   pointer-events: none;
+}
+
+.markerIdle {
+  opacity: 0.5;
+  border-style: dashed;
 }
 
 /* width / palette cards */

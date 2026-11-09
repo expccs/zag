@@ -38,6 +38,17 @@ Handoff log between agent sessions. Newest entry on top. See the
     corner (`y` grows upwards, TouchDesigner UV); documented in the
     protocol type and shared-modules § 4 / § 5; the local trail flips
     back. Was top-left like Kutaisi's `TouchArea.jsx`.
+  - Comet takes two colours: `params { head, tail }` (was `color`).
+    `ColorPicker` has «Голова» / «Хвіст» glass pills above the wheel and
+    two markers; the local trail draws only the tail colour (no head
+    core on the phone, by request). Not in Figma (design-system.md § 11).
+  - `docs/touchdesigner-setup.md` rewritten to the implemented protocol
+    (direct WS, `fade` → `session:start` → `touch:event` → `session:end`
+    → `drain`, no acks, bottom-left origin, `head` / `tail`); the old
+    CCS-run / `stroke:*` scheme is gone.
+  - `touch:event` trimmed to `{ x, y, touch }`: `swipe` / `direction`
+    removed from the protocol type, server validation, web stream and
+    docs (the facade does not need them).
 - **Next step:** try on real phones (orientation lock, pointer capture,
   fade timing of the trail), then commit stages 2–4; geo-fence remains.
 - **Blockers / open questions:** the forward arrow on the landscape
@@ -58,7 +69,7 @@ Handoff log between agent sessions. Newest entry on top. See the
     `abort()` drops waiting turns and skips the current task. Every
     `SessionService.request` enqueues `[fade(FADE_MS=5000), session]`
     with one `sessionId`: fade start → TD `fade` + client `queue:update
-    { waitMs: FADE_MS, position: 0 }` (countdown); session start → TD
+{ waitMs: FADE_MS, position: 0 }` (countdown); session start → TD
     `session:start` + `session:start`; skipped fade → `session:end`
     like a session. Touches accepted only on the `session` step.
     `SESSION_GAP_MS` replaced by `FADE_MS` (`.env.example`, config).
@@ -68,7 +79,7 @@ Handoff log between agent sessions. Newest entry on top. See the
     reference, `ws` dep added), `OfflineFacade` (logs commands when
     `TD_WS_URL` is empty), `FacadeGatewayFactory`. Wired in
     `bootstrap.ts` (`connect` on start, `close` on stop); `/health.facade
-    { connected, dropped }`; eslint forbids `ws` in `src/app`.
+{ connected, dropped }`; eslint forbids `ws` in `src/app`.
   - Tests: queue (6), service with `FakeFacade`, TD client against a
     `ws` server, bootstrap e2e asserts the exact TD message sequence
     (fade → session:start → touch → session:end → … → drain). 56 tests

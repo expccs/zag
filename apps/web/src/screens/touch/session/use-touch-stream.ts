@@ -1,32 +1,21 @@
 import { useCallback, useEffect, useRef } from 'react';
-import type { SwipeDirection, TouchEvent } from '@zag/protocol';
+import type { TouchEvent } from '@zag/protocol';
 
 const MOVE_INTERVAL_MS = 33;
-const SWIPE_MIN_DX = 0.15;
-const SWIPE_MAX_MS = 600;
 
 interface Stroke {
   pointerId: number;
-  startX: number;
-  startedAt: number;
   lastSentAt: number;
 }
 
 const clamp = (value: number): number => Math.min(1, Math.max(0, value));
 
-const swipeOf = (stroke: Stroke, x: number): SwipeDirection => {
-  if (Date.now() - stroke.startedAt > SWIPE_MAX_MS) return 'none';
-  const dx = x - stroke.startX;
-  if (Math.abs(dx) < SWIPE_MIN_DX) return 'none';
-  return dx < 0 ? 'left' : 'right';
-};
-
 /**
  * Pointer events of the drawing surface → `touch:event` stream (protocol
  * § 4): unit coordinates inside the surface with the origin bottom-left,
  * `touch: 1` while the finger is
- * down (moves throttled to ~30/s), one `touch: 0` on release that also
- * reports a quick horizontal swipe. One finger at a time, like the facade.
+ * down (moves throttled to ~30/s), one `touch: 0` on release. One finger
+ * at a time, like the facade.
  * Returns a callback ref for the surface element.
  */
 export const useTouchStream = (send: (event: TouchEvent) => void) => {
@@ -50,14 +39,9 @@ export const useTouchStream = (send: (event: TouchEvent) => void) => {
       };
     };
 
-    const emit = (
-      event: PointerEvent,
-      touch: 0 | 1,
-      direction: SwipeDirection = 'none',
-    ) => {
+    const emit = (event: PointerEvent, touch: 0 | 1) => {
       const { x, y } = toUnit(event);
-      const swipe: 0 | 1 = direction === 'none' ? 0 : 1;
-      sendRef.current({ x, y, touch, swipe, direction });
+      sendRef.current({ x, y, touch });
     };
 
     const down = (event: PointerEvent) => {
@@ -68,12 +52,9 @@ export const useTouchStream = (send: (event: TouchEvent) => void) => {
       } catch {
         // Synthetic events carry no capturable pointer; drawing still works.
       }
-      const now = Date.now();
       strokeRef.current = {
         pointerId: event.pointerId,
-        startX: toUnit(event).x,
-        startedAt: now,
-        lastSentAt: now,
+        lastSentAt: Date.now(),
       };
       emit(event, 1);
     };
@@ -91,7 +72,7 @@ export const useTouchStream = (send: (event: TouchEvent) => void) => {
       const stroke = strokeRef.current;
       if (!stroke || stroke.pointerId !== event.pointerId) return;
       strokeRef.current = null;
-      emit(event, 0, swipeOf(stroke, toUnit(event).x));
+      emit(event, 0);
     };
 
     surface.addEventListener('pointerdown', down);

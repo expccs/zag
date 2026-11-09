@@ -9,8 +9,13 @@ export const SETUP_KIND: Readonly<Record<InteractiveMode, SetupKind>> = {
   palette: 'palette',
 };
 
+/** Comet colours: the glowing core and the trail behind it. */
+export type CometPart = 'head' | 'tail';
+
+export type CometColors = Record<CometPart, string>;
+
 export type Setup =
-  | { kind: 'color'; color: string }
+  | ({ kind: 'color' } & CometColors)
   | { kind: 'width'; width: number }
   | { kind: 'palette'; palette: number };
 
@@ -38,9 +43,17 @@ export const BRUSH_WIDTHS: readonly BrushWidth[] = [
   { icon: '/icons/brush-3.svg', width: 246, height: 82, linePx: 18 },
 ];
 
-/** The marker's default spot on the colour wheel (`31:2237`, Ellipse 7). */
-export const DEFAULT_WHEEL_POINT = { x: 0.49, y: 0.235 } as const;
-export const DEFAULT_COLOR = '#FF4848';
+/**
+ * Default marker spots on the colour wheel: the head where Figma draws
+ * the marker (`31:2237`, Ellipse 7), the tail in the orange sector.
+ */
+export const DEFAULT_WHEEL_POINTS: Readonly<
+  Record<CometPart, { x: number; y: number }>
+> = {
+  head: { x: 0.49, y: 0.235 },
+  tail: { x: 0.27, y: 0.33 },
+};
+export const DEFAULT_COLORS: CometColors = { head: '#FF4848', tail: '#FF9F3F' };
 
 /**
  * Modes shown in the app. «Чумацький шлях» and «Палітра» are built but
@@ -58,7 +71,7 @@ export const isEnabledMode = (value: unknown): value is InteractiveMode =>
 export const defaultSetup = (mode: InteractiveMode): Setup => {
   switch (SETUP_KIND[mode]) {
     case 'color':
-      return { kind: 'color', color: DEFAULT_COLOR };
+      return { kind: 'color', ...DEFAULT_COLORS };
     case 'width':
       return { kind: 'width', width: 0 };
     default:
@@ -70,7 +83,7 @@ export const defaultSetup = (mode: InteractiveMode): Setup => {
 export const toParams = (setup: Setup): SessionRequest['params'] => {
   switch (setup.kind) {
     case 'color':
-      return { color: setup.color };
+      return { head: setup.head, tail: setup.tail };
     case 'width':
       return { width: setup.width };
     default:

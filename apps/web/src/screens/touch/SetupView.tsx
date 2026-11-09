@@ -21,8 +21,8 @@ const renderPicker = (setup: Setup, onChange: (setup: Setup) => void) => {
     case 'color':
       return (
         <ColorPicker
-          color={setup.color}
-          onChange={(color) => onChange({ kind: 'color', color })}
+          colors={setup}
+          onChange={(colors) => onChange({ kind: 'color', ...colors })}
         />
       );
     case 'width':

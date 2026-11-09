@@ -13,7 +13,6 @@ import {
   type SessionRequest,
   type SessionRequestResult,
   type SocketData,
-  type SwipeDirection,
   type TouchEvent,
 } from '@zag/protocol';
 import type { ClientGateway } from '../../app/ports/client-gateway';
@@ -42,12 +41,6 @@ type ServerEvent = keyof ServerToClientEvents;
 type ServerPayload<E extends ServerEvent> = Parameters<
   ServerToClientEvents[E]
 >[0];
-
-const DIRECTIONS: ReadonlySet<SwipeDirection> = new Set([
-  'left',
-  'right',
-  'none',
-]);
 
 export interface SocketServerOptions {
   allowedOrigins: string[];
@@ -131,9 +124,7 @@ export class ZagSocketServer implements ClientGateway {
     return (
       ZagSocketServer.isUnit(event.x) &&
       ZagSocketServer.isUnit(event.y) &&
-      ZagSocketServer.isBit(event.touch) &&
-      ZagSocketServer.isBit(event.swipe) &&
-      DIRECTIONS.has(event.direction as SwipeDirection)
+      ZagSocketServer.isBit(event.touch)
     );
   }
 

@@ -241,22 +241,10 @@ describe('socket server', () => {
     const cancelled = await socket.emitWithAck('session:cancel');
     assert.deepEqual(cancelled, { success: true, removed: true });
 
-    socket.emit('touch:event', { x: 2, y: 0, touch: 1, swipe: 0 } as never);
-    socket.emit('touch:event', {
-      x: 0.25,
-      y: 0.75,
-      touch: 1,
-      swipe: 0,
-      direction: 'none',
-    });
+    socket.emit('touch:event', { x: 2, y: 0, touch: 1 });
+    socket.emit('touch:event', { x: 0.25, y: 0.75, touch: 1 });
     await waitFor(() => sessions.touches.length === 1 || undefined);
-    assert.deepEqual(sessions.touches[0], {
-      x: 0.25,
-      y: 0.75,
-      touch: 1,
-      swipe: 0,
-      direction: 'none',
-    });
+    assert.deepEqual(sessions.touches[0], { x: 0.25, y: 0.75, touch: 1 });
     assert.deepEqual(calls(), [
       `connected:${user}`,
       `request:${user}:comet`,
@@ -335,15 +323,12 @@ describe('ZagSocketServer.resolveClientIp', () => {
 });
 
 describe('ZagSocketServer.isTouchEvent', () => {
-  it('accepts unit coordinates, bits and known directions only', () => {
-    const valid = { x: 0, y: 1, touch: 0, swipe: 1, direction: 'left' };
+  it('accepts unit coordinates and a touch bit only', () => {
+    const valid = { x: 0, y: 1, touch: 0 };
     assert.equal(ZagSocketServer.isTouchEvent(valid), true);
     assert.equal(ZagSocketServer.isTouchEvent({ ...valid, x: 1.01 }), false);
     assert.equal(ZagSocketServer.isTouchEvent({ ...valid, touch: 2 }), false);
-    assert.equal(
-      ZagSocketServer.isTouchEvent({ ...valid, direction: 'up' }),
-      false,
-    );
+    assert.equal(ZagSocketServer.isTouchEvent({ x: 0, y: 0 }), false);
     assert.equal(ZagSocketServer.isTouchEvent(null), false);
   });
 });

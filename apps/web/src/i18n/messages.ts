@@ -86,6 +86,9 @@ export interface Messages {
     /** `31:2237` / `34:4171` / `38:2192` and their ENG copies. */
     setup: {
       color: string;
+      /** Comet: which colour the wheel sets. Not in Figma, wording is ours. */
+      head: string;
+      tail: string;
       width: string;
       palette: string;
       start: string;
@@ -366,6 +369,8 @@ const uk: Messages = {
     },
     setup: {
       color: 'Обери колір',
+      head: 'Голова',
+      tail: 'Хвіст',
       width: 'Обери ширину',
       palette: 'Обери палітру',
       start: 'Почати',
@@ -618,6 +623,8 @@ const en: Messages = {
     },
     setup: {
       color: 'Choose a color',
+      head: 'Head',
+      tail: 'Tail',
       width: 'Choose width',
       palette: 'Choose a palette',
       start: 'Start',
