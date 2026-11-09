@@ -38,6 +38,7 @@ export interface DrainCommand {
 export type FacadeCommand =
   FadeCommand | SessionStartCommand | SessionEndCommand | DrainCommand;
 
+/** Unit coordinates of the protocol: origin bottom-left, `y` grows upwards. */
 export interface FacadeTouch extends TouchEvent {
   type: 'touch:event';
   sessionId: string;

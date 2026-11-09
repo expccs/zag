@@ -34,6 +34,10 @@ Handoff log between agent sessions. Newest entry on top. See the
   - Drawing screen photo re-cut to the Figma `CROP` window of
     `Rectangle 5` (`47:5934`), `public/facade-bw.jpg` 1600 × 825, now
     under the whole stage with the bars on top (design-system.md § 9).
+  - `touch:event` coordinates now have the origin in the bottom-left
+    corner (`y` grows upwards, TouchDesigner UV); documented in the
+    protocol type and shared-modules § 4 / § 5; the local trail flips
+    back. Was top-left like Kutaisi's `TouchArea.jsx`.
 - **Next step:** try on real phones (orientation lock, pointer capture,
   fade timing of the trail), then commit stages 2–4; geo-fence remains.
 - **Blockers / open questions:** the forward arrow on the landscape

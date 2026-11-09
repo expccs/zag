@@ -178,7 +178,7 @@ CCS ──socket.io──▶ CloudClient ──stateChange──▶ AppState ─
 | S→C                                 | `queue:update`    | `{ waitMs, position }`                                            | —                                                                                                                                                                               |
 | S→C                                 | `session:start`   | `{ sessionId, mode, durationMs, endsAt }`                         | —                                                                                                                                                                               |
 | S→C                                 | `session:end`     | `{ reason: 'completed' \| 'skipped' }`                            | —                                                                                                                                                                               |
-| C→S                                 | `touch:event`     | `{ x, y, touch: 0\|1, swipe: 0\|1, direction }`, `x`/`y` ∈ [0, 1] | —                                                                                                                                                                               |
+| C→S                                 | `touch:event`     | `{ x, y, touch: 0\|1, swipe: 0\|1, direction }`, `x`/`y` ∈ [0, 1], ноль в **левом нижнем** углу (UV: `y` растёт вверх) | —                                                                                                                                                                               |
 
 Правила:
 
@@ -210,7 +210,8 @@ CCS ──socket.io──▶ CloudClient ──stateChange──▶ AppState ─
 
 ## 5. Протокол TouchDesigner (сервер → TD, JSON по WebSocket)
 
-Поток (`stream`, без буфера):
+Поток (`stream`, без буфера; `x`/`y` ∈ [0, 1], ноль в левом нижнем углу,
+`y` растёт вверх):
 
 ```json
 {
@@ -272,7 +273,8 @@ true })` запускается только когда `flags.locationRestricti
   с подсказкой включить геолокацию. Не опрашивать `getCurrentPosition`
   по таймеру.
 - Касания (`screens/touch/session/use-touch-stream.ts`): Pointer Events на
-  области фасада, нормализация в [0, 1] относительно неё, `touch: 1` на
+  области фасада, нормализация в [0, 1] относительно неё с нулём в левом
+  нижнем углу (`y = 1 − clientY/height`, как UV в TouchDesigner), `touch: 1` на
   старт и движение (движения не чаще 33 мс, `socket.volatile.emit`),
   `touch: 0` на отпускание со свайпом (`|Δx| ≥ 0.15` за ≤ 600 мс →
   `left` / `right`). Один палец. Локальный след рисуется на canvas

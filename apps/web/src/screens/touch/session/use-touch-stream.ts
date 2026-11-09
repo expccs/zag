@@ -23,7 +23,8 @@ const swipeOf = (stroke: Stroke, x: number): SwipeDirection => {
 
 /**
  * Pointer events of the drawing surface → `touch:event` stream (protocol
- * § 4): unit coordinates inside the surface, `touch: 1` while the finger is
+ * § 4): unit coordinates inside the surface with the origin bottom-left,
+ * `touch: 1` while the finger is
  * down (moves throttled to ~30/s), one `touch: 0` on release that also
  * reports a quick horizontal swipe. One finger at a time, like the facade.
  * Returns a callback ref for the surface element.
@@ -39,11 +40,13 @@ export const useTouchStream = (send: (event: TouchEvent) => void) => {
   // React 19 ref callback: the returned function runs when the element
   // goes away, so the listeners live exactly as long as the surface.
   return useCallback((surface: HTMLDivElement) => {
+    // Protocol § 4: unit coordinates with the origin in the bottom-left
+    // corner (TouchDesigner UV), so `y` grows upwards unlike the DOM.
     const toUnit = (event: PointerEvent) => {
       const rect = surface.getBoundingClientRect();
       return {
         x: clamp((event.clientX - rect.left) / rect.width),
-        y: clamp((event.clientY - rect.top) / rect.height),
+        y: clamp(1 - (event.clientY - rect.top) / rect.height),
       };
     };
 

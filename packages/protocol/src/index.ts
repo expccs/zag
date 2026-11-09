@@ -114,7 +114,11 @@ export interface SessionEnd {
 export type SwipeDirection = 'left' | 'right' | 'none';
 
 export interface TouchEvent {
-  /** Normalised to [0, 1] within the drawing area. */
+  /**
+   * Normalised to [0, 1] within the drawing area, origin in the
+   * bottom-left corner (TouchDesigner UV): `x` grows to the right, `y`
+   * grows upwards.
+   */
   x: number;
   y: number;
   touch: 0 | 1;

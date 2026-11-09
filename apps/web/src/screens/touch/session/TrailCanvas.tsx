@@ -72,7 +72,8 @@ class TrailRenderer {
   }
 
   push(event: TouchEvent): void {
-    const point = { x: event.x * this.width, y: event.y * this.height };
+    // Protocol `y` grows upwards (origin bottom-left); the canvas does not.
+    const point = { x: event.x * this.width, y: (1 - event.y) * this.height };
     if (!this.current) this.begin(point);
     const stroke = this.current as Stroke;
     const previous = stroke.points.at(-1) ?? point;
