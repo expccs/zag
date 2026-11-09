@@ -15,7 +15,8 @@ export interface ProgramReference {
   projectUID: string;
   groupID: string;
   programID: string;
-  params?: number[];
+  /** `[+value]` for switches; a `WITH_PARAMS` button takes its own list. */
+  params?: (number | string)[];
 }
 
 export interface CommandProgram {

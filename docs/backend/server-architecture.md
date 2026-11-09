@@ -26,7 +26,8 @@ apps/server/src/
 │       ├── session-service.ts   # очередь сеансов: request/cancel/touch, grace, abort
 │       └── health-service.ts    # отчёт /health (+ sessions)
 ├── infrastructure/              # адаптеры портов
-│   ├── ccs/                     # CloudClient, FakeCloudClient, CloudGatewayFactory, ccs-ids
+│   ├── ccs/                     # CloudClient, FakeCloudClient, CloudGatewayFactory, ccs-ids, CloudControls (кнопки = FacadeGateway)
+│   ├── facade/composite-facade.ts # CompositeFacade: команды в TD и CCS, поток — только в TD
 │   ├── socket/socket-server.ts  # ZagSocketServer implements ClientGateway; session:*, touch:event → SessionApi
 │   ├── touch-designer/          # TouchDesignerClient (ws), OfflineFacade, FacadeGatewayFactory
 │   ├── http/health-http-server.ts # HealthHttpServer, HTTP_SERVER
@@ -133,8 +134,14 @@ CCS в фоне с ретраями логина; на каждом событи
 `TouchDesignerClient` (перенос `reference/touch-designer-client.ts`:
 реконнект с backoff, контроль pong, буфер 32 команд, поток без буфера)
 при заданном `TD_WS_URL`, иначе `OfflineFacade` (команды в лог).
-Выбор — `FacadeGatewayFactory.create(config.facade, logger)`;
-`Application.start` вызывает `connect()`, `stop` — `close()`.
+Выбор — `FacadeGatewayFactory.create(config.facade, logger)`. Если `groupID`
+кнопок не пуст (константа `CCS_CONTROLS_GROUP_ID`, env может обнулить),
+`Application.provideFacade` оборачивает рендерер в
+`CompositeFacade` вместе с `CloudControls` (`infrastructure/ccs`): тот же
+порт поверх `CloudGateway.execCommand`, `session:start` → кнопка
+`WITH_PARAMS` с JSON сеанса, `session:end` → кнопка `COMMAND`, остальное
+игнорируется. `Application.start` вызывает `connect()`, `stop` —
+`close()`.
 
 `ZagSocketServer` держит `Map<userId, Set<Socket>>`: `notify*` доходят до
 всех вкладок пользователя, `userDisconnected` вызывается, когда закрылась

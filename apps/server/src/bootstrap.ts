@@ -17,6 +17,7 @@ import { SESSION_CONFIG } from './app/ports/session-config';
 import { HealthService } from './app/services/health-service';
 import { SessionService } from './app/services/session-service';
 import { StateSyncService } from './app/services/state-sync-service';
+import { CloudControls } from './infrastructure/ccs/cloud-controls';
 import { CloudGatewayFactory } from './infrastructure/ccs/cloud-gateway-factory';
 import {
   ConfigLoader,
@@ -27,6 +28,7 @@ import {
   HTTP_SERVER,
   HealthHttpServer,
 } from './infrastructure/http/health-http-server';
+import { CompositeFacade } from './infrastructure/facade/composite-facade';
 import { StructuredLogger } from './infrastructure/logging/structured-logger';
 import { ZagSocketServer } from './infrastructure/socket/socket-server';
 import { FacadeGatewayFactory } from './infrastructure/touch-designer/facade-gateway-factory';
@@ -65,6 +67,7 @@ export class Application {
         allowedOrigins: config.allowedOrigins,
         ccsMode: config.cloud.mode,
         facade: config.facade.url ? 'touchdesigner' : 'offline',
+        ccsControls: config.controls.groupID !== null,
       });
     });
     container.resolve(StateSyncService).start();
@@ -171,10 +174,22 @@ export class Application {
     });
   }
 
+  // TouchDesigner gets everything; the CCS buttons (when their group id
+  // is configured) get session:start / session:end as well.
   private static provideFacade(container: DependencyContainer) {
     const config = container.resolve(SERVER_CONFIG);
-    const logger = container.resolve(LOGGER).child({ module: 'facade' });
-    return FacadeGatewayFactory.create(config.facade, logger);
+    const logger = container.resolve(LOGGER);
+    const renderer = FacadeGatewayFactory.create(
+      config.facade,
+      logger.child({ module: 'facade' }),
+    );
+    if (!config.controls.groupID) return renderer;
+    const controls = new CloudControls(
+      container.resolve(CLOUD_GATEWAY),
+      config.controls,
+      logger.child({ module: 'ccs' }),
+    );
+    return new CompositeFacade(renderer, controls);
   }
 
   private static provideClients(container: DependencyContainer) {

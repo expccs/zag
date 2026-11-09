@@ -8,6 +8,7 @@
 | Что                                                   | Значение                                                     |
 | ----------------------------------------------------- | ------------------------------------------------------------ |
 | `CCS_PROJECT_ID` — id проекта ZAG: логин, `joinRoom`, `getPrograms`; при логине сверяется со списком `/api/user/projects` учётки | `676ed9a3108c970013dcb321` |
+| `CCS_CONTROLS_GROUP_ID` — группа «Public app controls»                                                                           | `6aef145253257f190d66c47c` |
 
 ## Группа «Public app state» — свичи состояния (`CCS_STATE_GROUP`)
 
@@ -29,13 +30,22 @@
 
 ## Группа «Public app controls» — кнопки (`CCS_CONTROL_PROGRAMS`)
 
-`state: null`, на флаги не влияют; приложение дёргает их через
-`execCommand`. `_id` группы **[уточнить]**.
+`_id` группы `6aef145253257f190d66c47c` (`CCS_CONTROLS_GROUP_ID`),
+`state: null`, на флаги не влияют; приложение нажимает их через
+`execCommand` (`runProgram`) из `CloudControls`
+(`apps/server/src/infrastructure/ccs/cloud-controls.ts`) на каждом ходе
+очереди. В `offline` группа `offline:controls`, нажатия пишет
+`FakeCloudClient`.
 
-| Программа     | `programID`    | type                             |
-| ------------- | -------------- | -------------------------------- |
-| Session start | `ospyruigxyop` | `WITH_PARAMS` (параметры сеанса) |
-| Session end   | `fwzxaqlwzwbu` | `COMMAND`                        |
+| Программа     | `programID`    | type                             | Когда и с чем                                                                                  |
+| ------------- | -------------- | -------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Session start | `ospyruigxyop` | `WITH_PARAMS` (параметры сеанса) | `session:start`; `params: [JSON]` — `{"mode":"comet","params":{"head":"#…","tail":"#…"},"durationMs":40000}` |
+| Session end   | `fwzxaqlwzwbu` | `COMMAND`                        | `session:end` (`completed` и `skipped`), без `params`                                          |
+
+Env-переопределения: `CCS_CONTROLS_GROUP` (пустое значение выключает
+кнопки), `CCS_PROGRAM_SESSION_START`, `CCS_PROGRAM_SESSION_END`. Формат
+`params` кнопки `WITH_PARAMS` (одна строка JSON) — **[проверить]** с
+Expolight.
 
 ## `.env` для dry-run / live
 

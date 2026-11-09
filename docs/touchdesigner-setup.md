@@ -12,9 +12,12 @@ TD у локальній мережі (`TD_WS_URL`, наприклад `ws://192
 
 Розрізняти за полем `type`. **Відповідати нічого не потрібно** — TD не
 надсилає жодних повідомлень; сервер лише пінгує з'єднання (WebSocket ping
-кожні 30 с, без pong за 30 с — переконект з паузою 1–10 с). CCS у цій
-схемі не бере участі: кнопки «Public app controls» у проєкті ZAG сервер
-не натискає (чи потрібні вони взагалі — відкрите питання до Expolight).
+кожні 30 с, без pong за 30 с — переконект з паузою 1–10 с). Паралельно
+сервер натискає кнопки CCS «Public app controls» у проєкті ZAG: «Session
+start» (`WITH_PARAMS`, `params: [JSON]` того самого вмісту, що й
+`session:start` нижче) і «Session end» (`COMMAND`) — якщо TD отримує
+команди через CCS як пристрій `Touch`, це дубль того самого сигналу;
+потік точок іде лише напряму.
 
 Реалізація: `apps/server/src/infrastructure/touch-designer/touch-designer-client.ts`,
 типи повідомлень — `apps/server/src/app/ports/facade-gateway.ts`.

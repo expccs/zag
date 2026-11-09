@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { CCS_STATE_GROUP_ID, CCS_STATE_PROGRAMS } from '../ccs/ccs-ids';
+import {
+  CCS_CONTROLS_GROUP_ID,
+  CCS_STATE_GROUP_ID,
+  CCS_STATE_PROGRAMS,
+} from '../ccs/ccs-ids';
 import { ConfigError, ConfigLoader } from './config';
 
 const ONLINE = {
@@ -23,6 +27,10 @@ describe('ConfigLoader', () => {
       disconnectGraceMs: 10_000,
     });
     assert.deepEqual(config.facade, { url: null, pingIntervalMs: 30_000 });
+    assert.deepEqual(config.controls, {
+      groupID: 'offline:controls',
+      programs: { sessionStart: 'ospyruigxyop', sessionEnd: 'fwzxaqlwzwbu' },
+    });
   });
 
   it('defaults to live and requires the CCS account', () => {
@@ -43,6 +51,7 @@ describe('ConfigLoader', () => {
     assert.deepEqual(config.state.programs, CCS_STATE_PROGRAMS);
     assert.equal(config.state.initial.techPause, true);
     assert.deepEqual(config.state.overrides, {});
+    assert.equal(config.controls.groupID, CCS_CONTROLS_GROUP_ID);
   });
 
   it('lets env override the constants and parses overrides', () => {
@@ -58,6 +67,8 @@ describe('ConfigLoader', () => {
       FADE_MS: '30',
       TD_WS_URL: 'ws://10.0.0.5:85',
       TD_PING_INTERVAL_MS: '5000',
+      CCS_CONTROLS_GROUP: 'g-controls',
+      CCS_PROGRAM_SESSION_END: 'p-end',
       DISCONNECT_GRACE_MS: '80',
     });
     assert.equal(config.state.groupID, 'g2');
@@ -78,6 +89,10 @@ describe('ConfigLoader', () => {
     assert.deepEqual(config.facade, {
       url: 'ws://10.0.0.5:85',
       pingIntervalMs: 5000,
+    });
+    assert.deepEqual(config.controls, {
+      groupID: 'g-controls',
+      programs: { sessionStart: 'ospyruigxyop', sessionEnd: 'p-end' },
     });
   });
 

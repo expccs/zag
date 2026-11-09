@@ -243,6 +243,14 @@ CCS ──socket.io──▶ CloudClient ──stateChange──▶ AppState ─
 Между ходами пауз нет: следующий `fade` уходит сразу за `session:end`.
 Типы в `apps/server/src/app/ports/facade-gateway.ts`.
 
+Те же `session:start` / `session:end` уходят и в CCS — кнопки группы
+«Public app controls» (`ccs-ids.md`): `CloudControls` реализует тот же
+порт `FacadeGateway` через `execCommand`, `CompositeFacade` в `bootstrap`
+раздаёт команды TD и CCS, поток точек идёт только в TD. `session:start`
+→ кнопка `WITH_PARAMS` с `params: [JSON {mode, params, durationMs}]`,
+`session:end` → кнопка `COMMAND`; `fade` и `drain` кнопок не имеют.
+`_id` группы и кнопок — константы `ccs-ids.ts`, env переопределяет.
+
 `params` по режимам: `comet` → `head` и `tail` (hex ядра кометы и её
 хвоста, оба с колеса цвета), `milky-way` → `width` (индекс ширины кисти
 0–2), `palette` → `palette` (индекс 0–3, см.
@@ -331,6 +339,8 @@ Socket.IO + `/health`), он не раздаёт статику.
 | `CCS_STATE_GROUP`                                                                                               | `_id` группы программ «состояние приложения»                                  | `6aef145253257f190d66c47b` из `ccs-ids.ts` ([`ccs-ids.md`](ccs-ids.md)) |
 | `CCS_PROGRAM_TECH_PAUSE`, `CCS_PROGRAM_INTERACTIVE`, `CCS_PROGRAM_LOCATION_RESTRICTION`, `CCS_PROGRAM_SCHEDULE` | `_id` программ-флагов                                                         | константы ZAG из `ccs-ids.ts`; в `offline` — `offline:<flag>`           |
 | `STATE_OVERRIDES`                                                                                               | принудительные флаги, `interactive=true,schedule=false`                       | —                                                                       |
+| `CCS_CONTROLS_GROUP`                                                                                            | `_id` группы «Public app controls»; явно пустое — кнопки не нажимаются        | `6aef145253257f190d66c47c` из `ccs-ids.ts`; в `offline` — `offline:controls` |
+| `CCS_PROGRAM_SESSION_START`, `CCS_PROGRAM_SESSION_END`                                                          | `_id` кнопок session start (`WITH_PARAMS`) / session end                      | константы из `ccs-ids.ts`                                               |
 | `GEO_RADIUS_M`                                                                                                  | радиус зоны                                                                   | `100`                                                                   |
 | `GEO_ACCURACY_TOLERANCE_M`                                                                                      | максимум допуска по точности GPS                                              | `30`                                                                    |
 | `GEO_CENTER`                                                                                                    | `lat,lng`; переопределяет координаты из CCS                                   | из логина CCS                                                           |

@@ -7,7 +7,13 @@ import {
   type CloudMode,
 } from '../ccs/cloud-gateway-factory';
 import { CCS_DEFAULT_URL } from '../ccs/cloud-client';
-import { CCS_STATE_GROUP_ID, CCS_STATE_PROGRAMS } from '../ccs/ccs-ids';
+import {
+  CCS_CONTROL_PROGRAMS,
+  CCS_CONTROLS_GROUP_ID,
+  CCS_STATE_GROUP_ID,
+  CCS_STATE_PROGRAMS,
+} from '../ccs/ccs-ids';
+import type { ControlsConfig } from '../ccs/cloud-controls';
 import type { FacadeConfig } from '../touch-designer/facade-gateway-factory';
 
 export interface StateConfig {
@@ -28,6 +34,8 @@ export interface ServerConfig {
   trustProxy: boolean;
   cloud: CloudConfig;
   state: StateConfig;
+  /** CCS «Public app controls» buttons (`CCS_CONTROLS_GROUP`, …). */
+  controls: ControlsConfig;
   /** Queue timing (`SESSION_MS`, `FADE_MS`, `DISCONNECT_GRACE_MS`). */
   session: SessionConfig;
   /** TouchDesigner (`TD_WS_URL`, `TD_PING_INTERVAL_MS`). */
@@ -122,6 +130,7 @@ export class ConfigLoader {
       trustProxy: reader.boolean('TRUST_PROXY', true),
       cloud,
       state: ConfigLoader.readState(reader, cloud.mode),
+      controls: ConfigLoader.readControls(reader, cloud.mode),
       session: ConfigLoader.readSession(reader),
       facade: ConfigLoader.readFacade(reader),
     };
@@ -192,6 +201,29 @@ export class ConfigLoader {
       programs[flag] = reader.string(key, fallback);
     }
     return programs;
+  }
+
+  // Same shape as the state group: project constants by default, env
+  // overrides; an explicitly empty CCS_CONTROLS_GROUP disables the buttons.
+  private static readControls(
+    reader: EnvReader,
+    mode: CloudMode,
+  ): ControlsConfig {
+    const online = mode !== 'offline';
+    const fallback = online ? CCS_CONTROLS_GROUP_ID : 'offline:controls';
+    return {
+      groupID: reader.string('CCS_CONTROLS_GROUP', fallback) || null,
+      programs: {
+        sessionStart: reader.string(
+          'CCS_PROGRAM_SESSION_START',
+          CCS_CONTROL_PROGRAMS.sessionStart,
+        ),
+        sessionEnd: reader.string(
+          'CCS_PROGRAM_SESSION_END',
+          CCS_CONTROL_PROGRAMS.sessionEnd,
+        ),
+      },
+    };
   }
 
   private static readState(reader: EnvReader, mode: CloudMode): StateConfig {

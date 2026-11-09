@@ -49,6 +49,17 @@ Handoff log between agent sessions. Newest entry on top. See the
   - `touch:event` trimmed to `{ x, y, touch }`: `swipe` / `direction`
     removed from the protocol type, server validation, web stream and
     docs (the facade does not need them).
+  - CCS «Public app controls»: `infrastructure/ccs/cloud-controls.ts`
+    (`CloudControls implements FacadeGateway`: `session:start` → button
+    `WITH_PARAMS` with `params: [JSON {mode, params, durationMs}]`,
+    `session:end` → `COMMAND`), `infrastructure/facade/composite-facade.ts`
+    fans commands out to TD + CCS (stream only to TD); wired in
+    `provideFacade`; group `_id` `6aef145253257f190d66c47c` is the
+    constant `CCS_CONTROLS_GROUP_ID` in `ccs-ids.ts` (env override,
+    `offline:controls` offline, recorded by `FakeCloudClient`). Config
+    `controls { groupID, programs }`, env `CCS_PROGRAM_SESSION_*`;
+    `ProgramReference.params` may hold strings. Tests: unit + e2e
+    (6 button presses over 3 turns), config.
 - **Next step:** try on real phones (orientation lock, pointer capture,
   fade timing of the trail), then commit stages 2–4; geo-fence remains.
 - **Blockers / open questions:** the forward arrow on the landscape
@@ -88,8 +99,8 @@ Handoff log between agent sessions. Newest entry on top. See the
   stage 2; web side of the queue (countdown on `position: 0`) is stage 4.
 - **Blockers / open questions:** TD message names (`fade`, `session:*`,
   `drain`) and `FADE_MS` = 5 s to confirm with the TouchDesigner
-  operator; CCS «Public app controls» (`sessionStart` / `sessionEnd`)
-  still not triggered — who owns that, CCS or TD?
+  operator; the `WITH_PARAMS` payload format of the CCS «Session start»
+  button (one JSON string) to confirm with Expolight.
 
 ---
 
