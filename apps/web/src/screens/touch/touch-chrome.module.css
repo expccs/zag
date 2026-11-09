@@ -1,5 +1,5 @@
-/* Touch & Create notices 45:3440 / 45:3600 and modes 26:1957 on the
-   393 × 852 grid: header 95, arrow centre y ≈ 120, lang pill y = 110,
+/* Portrait chrome of every Touch & Create screen (45:3440, 26:1957, …) on
+   the 393 × 852 grid: header 95, arrow centre y ≈ 120, lang pill y = 110,
    content from y = 157, footer logos at y = 796. The background is Figma
    layer `image 27` of these frames pre-rendered with its Layer blur 79
    (CSS 39.7), contrast +0.10, saturation −0.06
@@ -44,4 +44,17 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+}
+
+/* Final 38:2770: a single Expolight logo centred at (128, 793). */
+.footerSolo {
+  display: flex;
+  justify-content: center;
+  padding: 0 0 1.5rem;
+}
+
+.footerSolo img {
+  display: block;
+  width: 7.9375rem;
+  height: auto;
 }

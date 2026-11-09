@@ -9,6 +9,7 @@ import {
 import { io } from 'socket.io-client';
 import { createConnectionStore } from './connection-store';
 import { createServerStateStore } from './server-state-store';
+import { createSessionStore } from './session-store';
 import { getUserId } from './user-id';
 import { SocketContext, type SocketContextValue } from './socket-context';
 
@@ -33,7 +34,8 @@ const createConnection = (url: string) => {
   const socket = createSocket(url);
   const connection = createConnectionStore(socket);
   const serverState = createServerStateStore(socket);
-  return { socket, connection, serverState };
+  const session = createSessionStore(socket);
+  return { socket, connection, serverState, session };
 };
 
 /**
@@ -47,7 +49,7 @@ export const SocketProvider = ({
   autoConnect = false,
   children,
 }: SocketProviderProps) => {
-  const [{ socket, connection, serverState }] = useState(() =>
+  const [{ socket, connection, serverState, session }] = useState(() =>
     createConnection(url),
   );
   const { status, error } = useSyncExternalStore(
@@ -75,8 +77,8 @@ export const SocketProvider = ({
   }, [autoConnect, connect, disconnect]);
 
   const value = useMemo<SocketContextValue>(
-    () => ({ socket, status, error, state, connect, disconnect }),
-    [socket, status, error, state, connect, disconnect],
+    () => ({ socket, status, error, state, session, connect, disconnect }),
+    [socket, status, error, state, session, connect, disconnect],
   );
 
   return (

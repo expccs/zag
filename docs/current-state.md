@@ -5,6 +5,38 @@ Handoff log between agent sessions. Newest entry on top. See the
 
 ---
 
+- **Timestamp:** 2026-11-09T15:30:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:** Interactive-flow UI in `apps/web` (stage 4; uncommitted,
+  on `master`). Copy and geometry pulled from Figma copy
+  `w3H4qazUL5GxhIm3MXnKzP` via remote MCP (`use_figma` text dumps):
+  - `/touch` is a layout route (`TouchScreen` → `Outlet`, notice gate);
+    nested `ModesView` (3 cards → `/touch/:mode`), `InstructionsView`,
+    `SetupView` (`ColorPicker` reads the wheel pixels, `WidthPicker`,
+    `PalettePicker`), `session/SessionView` (`QueueView`, `RotateView`,
+    `CountdownView`, `DrawingView` + `TrailCanvas` + `use-touch-stream`,
+    `FinalView`, `LandscapeBar`). Shared `TouchChrome`, `GlassButton`,
+    `.glass-card`, `BackLink` as button, `LangSwitch layout="row"`.
+  - `socket/session-store.ts` (+ `useSession`): phases idle / queued /
+    fade / active / ended from `session:request` ack, `queue:update`
+    (`position: 0` = fade), `session:start`, `session:end`; local
+    timestamps; re-request on reconnect; `cancel` / `reset` / `sendTouch`
+    (volatile). Hooks `useOrientation`, `useSecondsUntil`.
+  - i18n: all UA/ENG strings of modes, instructions (3 modes), setup,
+    queue, fade, timer, final. Assets in `apps/web/public` (see
+    design-system.md § 9). Typecheck / eslint / prettier / build green;
+    headless-Chrome CDP walkthrough (scratchpad `walk.mjs`, UA + ENG)
+    screenshotted every screen incl. landscape countdown and drawing.
+- **Next step:** try on real phones (orientation lock, pointer capture,
+  fade timing of the trail), then commit stages 2–4; geo-fence remains.
+- **Blockers / open questions:** the forward arrow on the landscape
+  countdown (`31:2523`, x = 755) has no defined action — not rendered;
+  no Figma frames for ENG rotate/countdown/final beyond 89:1915 /
+  84:3543 / 89:1596 (used); selected state of width/palette cards is the
+  § 7 proposal; `FADE_MS` 5 s and TD message names still to confirm.
+
+---
+
 - **Timestamp:** 2026-11-09T12:30:00Z
 - **Agent / model:** Claude Fable 5.1
 - **What changed:** Fade task + TouchDesigner (stage 2; uncommitted, on

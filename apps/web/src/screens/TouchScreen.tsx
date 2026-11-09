@@ -1,16 +1,12 @@
 import { useEffect } from 'react';
+import { Outlet } from 'react-router';
 import type { PublicState } from '@zag/protocol';
-import { BackLink } from '../components/BackLink';
-import { BrandFooter } from '../components/BrandFooter';
-import { LangSwitch } from '../components/LangSwitch';
-import { ZagHeader } from '../components/ZagHeader';
 import type { ConnectionStatus } from '../socket/socket-context';
 import { useSocket } from '../socket/use-socket';
 import { ConnectionLostView } from './touch/ConnectionLostView';
-import { ModesView } from './touch/ModesView';
 import { NoticeView } from './touch/NoticeView';
 import { ScheduleView } from './touch/ScheduleView';
-import styles from './touch-screen.module.css';
+import { TouchChrome } from './touch/TouchChrome';
 
 type View = 'connecting' | 'lost' | PublicState['screen'];
 
@@ -29,14 +25,12 @@ const resolveView = (
   return state ? state.screen : 'connecting';
 };
 
-const renderView = (view: View) => {
+const renderNotice = (view: Exclude<View, 'interactive'>) => {
   switch (view) {
     case 'lost':
       return <ConnectionLostView />;
     case 'schedule':
       return <ScheduleView />;
-    case 'interactive':
-      return <ModesView />;
     default:
       return <NoticeView kind={view} />;
   }
@@ -46,34 +40,26 @@ const renderView = (view: View) => {
  * Touch & Create: the only place the socket is opened. Connects on mount,
  * disconnects on unmount, and re-renders on every `state:update` so a
  * change on the server (e.g. a tech pause) replaces the screen at once.
+ * While the screen is `interactive` the nested routes (modes →
+ * instructions → setup → session) render through the outlet; otherwise the
+ * notice replaces them. The session store survives a notice (a short
+ * connection loss keeps the place in the queue) and is forgotten only when
+ * the user leaves Touch & Create.
  */
 const TouchScreen = () => {
-  const { status, error, state, connect, disconnect } = useSocket();
+  const { status, error, state, session, connect, disconnect } = useSocket();
 
   useEffect(() => {
     connect();
-    return disconnect;
-  }, [connect, disconnect]);
+    return () => {
+      session.reset();
+      disconnect();
+    };
+  }, [connect, disconnect, session]);
 
   const view = resolveView(status, error, state);
-
-  return (
-    <main className={styles.screen} data-view={view}>
-      <div className={styles.column}>
-        <ZagHeader />
-        <nav className={styles.nav}>
-          <BackLink to="/mission" />
-          <div className={styles.lang}>
-            <LangSwitch size="home" />
-          </div>
-        </nav>
-        <section className={styles.content} aria-live="polite">
-          {renderView(view)}
-        </section>
-        <BrandFooter />
-      </div>
-    </main>
-  );
+  if (view === 'interactive') return <Outlet />;
+  return <TouchChrome back="/mission">{renderNotice(view)}</TouchChrome>;
 };
 
 export default TouchScreen;

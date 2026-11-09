@@ -368,6 +368,13 @@ y = 241. Маркер `icons/color-marker.svg`: круг 11.5, обводка `#
 Файлы `*@1x.png` и `*-rendered-*.png` — рендеры Figma в размере макета,
 для сравнения; в продакшн идут исходники и SVG.
 
+В `apps/web/public` лежат уменьшенные копии (`sips`): `color-wheel.png`
+600, `facade-bw.jpg` 1600 × 900 (ч/б через Generic Gray Profile),
+`modes/*.jpg` 300, `icons/rotate-phone.png` 400, `icons/swipe-hand.png`,
+`zag-short.png` 240 и `icons/brush-{1,2,3}.svg` — три штриха ширины
+(`Vector 7/8/9` фрейма `34:4171`, экспорт `SVG_STRING`; локальный
+`brush-widths.svg` — другой слой и для карточек не годится).
+
 ## 10. Отступы
 
 Шкала 4 px: `4, 8, 12, 16, 20, 24, 32, 40, 48, 64`. Боковой отступ 24,

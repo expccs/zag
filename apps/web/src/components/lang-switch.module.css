@@ -54,3 +54,16 @@
   width: 0.9125rem;
   height: 0.3438rem;
 }
+
+.column {
+  flex-direction: column;
+}
+
+.row {
+  flex-direction: row-reverse;
+  gap: 0.375rem;
+}
+
+.row .chevron {
+  transform: rotate(90deg);
+}

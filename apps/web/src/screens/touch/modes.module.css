@@ -26,27 +26,22 @@
   gap: 0.4375rem;
 }
 
-/* liquid glass, design-system.md § 5.2 */
 .card {
-  position: relative;
+  display: block;
   height: 9.4375rem;
   border-radius: 1.25rem;
-  background: rgba(217, 217, 217, 0.01);
-  backdrop-filter: blur(2.5rem);
-  -webkit-backdrop-filter: blur(2.5rem);
-  border: 0.1875rem solid rgba(255, 255, 255, 0.1);
-  box-shadow:
-    inset 1.125rem 1.125rem 0.625rem -1.25rem #fff,
-    inset -0.875rem -0.875rem 0.4375rem -0.75rem #b3b3b3;
+  color: var(--color-text);
+  text-decoration: none;
+  transition: transform 120ms ease-out;
 }
 
-.card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  box-shadow: inset 0 0 1.75rem rgba(255, 255, 255, 0.05);
+.card:active {
+  transform: scale(0.98);
+}
+
+.card:focus-visible {
+  outline: 0.125rem solid rgba(255, 255, 255, 0.6);
+  outline-offset: 0.125rem;
 }
 
 .preview {
@@ -73,6 +68,7 @@
 }
 
 .cardTitle {
+  display: block;
   margin: 0;
   font-weight: 700;
   font-size: 0.8562rem;
@@ -80,6 +76,7 @@
 }
 
 .cardBody {
+  display: block;
   margin: 0;
   font-weight: 400;
   font-size: 0.5313rem;

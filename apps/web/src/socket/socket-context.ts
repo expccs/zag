@@ -5,6 +5,7 @@ import type {
   PublicState,
   ServerToClientEvents,
 } from '@zag/protocol';
+import type { SessionStore } from './session-store';
 
 export type ZagSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -17,6 +18,8 @@ export interface SocketContextValue {
   error: string | null;
   /** Latest `state:update` from the server; null until the first one. */
   state: PublicState | null;
+  /** The user's turn in the queue; read it with `useSession`. */
+  session: SessionStore;
   /** Stable callbacks: safe as effect dependencies. */
   connect: () => void;
   disconnect: () => void;

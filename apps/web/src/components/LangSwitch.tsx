@@ -4,6 +4,8 @@ import styles from './lang-switch.module.css';
 export interface LangSwitchProps {
   /** Home pill is 56 × 44.5 with a 12.2 label; other screens 52 × 41 / 11.5. */
   size?: 'home' | 'screen';
+  /** `row`: landscape countdown `31:2523`, chevron left of the label. */
+  layout?: 'column' | 'row';
 }
 
 const chevron = (
@@ -18,12 +20,15 @@ const chevron = (
 );
 
 /** Glass pill with the current language and a chevron; tap toggles UA/ENG. */
-export const LangSwitch = ({ size = 'screen' }: LangSwitchProps) => {
+export const LangSwitch = ({
+  size = 'screen',
+  layout = 'column',
+}: LangSwitchProps) => {
   const { messages, toggleLanguage } = useLanguage();
   return (
     <button
       type="button"
-      className={`glass-pill ${styles.pill} ${styles[size]}`}
+      className={`glass-pill ${styles.pill} ${styles[size]} ${styles[layout]}`}
       onClick={toggleLanguage}
       aria-label={messages.langSwitchHint}
     >

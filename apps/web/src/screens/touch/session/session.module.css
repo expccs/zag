@@ -1,0 +1,129 @@
+/* Portrait session screens on the 393 × 852 grid (content from y = 157). */
+
+/* Queue 34:2820: h3 Unbounded SemiBold 20.6 at y = 180, body Montserrat 13.2
+   at y = 218 (323 wide), ring 252 at y = 319, number Montserrat SemiBold
+   105.5 centred. */
+.queue {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.4375rem var(--space-6) 1.5rem;
+  text-align: center;
+}
+
+.queueTitle {
+  margin: 0;
+  font-family: var(--font-unbounded);
+  font-weight: 600;
+  font-size: 1.2875rem;
+  line-height: normal;
+}
+
+.queueBody {
+  margin: 0.75rem 0 0;
+  max-width: 20.1875rem;
+  font-family: var(--font-montserrat);
+  font-weight: 400;
+  font-size: 0.825rem;
+  line-height: normal;
+}
+
+.ring {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 15.75rem;
+  height: 15.75rem;
+  margin-top: 4.75rem;
+  border: 0.1544rem solid #f6f6f6;
+  border-radius: 50%;
+}
+
+.ringNumber {
+  font-family: var(--font-montserrat);
+  font-weight: 600;
+  font-size: 6.5938rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Rotate 89:1852: «Початок через» Unbounded Regular 23.1 at y = 143 (above
+   the content top), phone drawing 142 × 134 at y = 226, body Montserrat 11.5
+   (304 wide) at y = 384, hand 129 at y = 417, body at y = 560. */
+.rotate {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: -0.875rem;
+  padding: 0 var(--space-6) 1.5rem;
+  text-align: center;
+}
+
+.rotateTitle {
+  margin: 0;
+  font-family: var(--font-unbounded);
+  font-weight: 400;
+  font-size: 1.4438rem;
+  line-height: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.rotateIcon {
+  width: 8.875rem;
+  height: auto;
+  margin-top: 3.375rem;
+}
+
+.rotateBody {
+  margin: 1.5rem 0 0;
+  max-width: 19rem;
+  font-family: var(--font-montserrat);
+  font-weight: 400;
+  font-size: 0.7188rem;
+  line-height: normal;
+}
+
+.swipeIcon {
+  width: 8.0625rem;
+  height: auto;
+  margin-top: 0.3125rem;
+}
+
+.swipeIcon + .rotateBody {
+  margin-top: 0.875rem;
+}
+
+/* Final 38:2770: title Unbounded SemiBold 34.6 uppercase, two lines centred
+   around y = 445; body Montserrat 11.5 (304 wide) at y = 725. */
+.final {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 var(--space-6) 1.625rem;
+  text-align: center;
+}
+
+.finalTitle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  margin: 0;
+  font-family: var(--font-unbounded);
+  font-weight: 600;
+  font-size: 2.1625rem;
+  line-height: normal;
+  text-transform: uppercase;
+  white-space: pre-line;
+}
+
+.finalBody {
+  margin: 0;
+  max-width: 19rem;
+  font-family: var(--font-montserrat);
+  font-weight: 400;
+  font-size: 0.7188rem;
+  line-height: normal;
+}

@@ -59,3 +59,47 @@
   border-radius: 1.1563rem;
   font-size: 1.1563rem;
 }
+
+/* «Почати» 31:2237: frame 273 × 44.5, pill 261 × 37 inset 3 / 5, r 16.5,
+   Unbounded Regular 16.5. */
+.action {
+  width: 17.0625rem;
+  height: 2.7813rem;
+  padding: 0.1875rem 0.375rem;
+}
+
+.action .pill {
+  border-radius: 1.0313rem;
+  font-size: 1.0313rem;
+}
+
+/* «Продовжити» 34:4109: one rectangle 283 × 35, Unbounded Regular 15.6. */
+.instruction {
+  width: 17.6875rem;
+  height: 2.1875rem;
+  padding: 0;
+}
+
+.instruction .pill {
+  border-radius: 1.0938rem;
+  font-size: 0.975rem;
+}
+
+.frame:disabled {
+  opacity: 0.5;
+}
+
+.frame:disabled .pill {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Button reset: the frame is transparent like the Link. */
+.button {
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}

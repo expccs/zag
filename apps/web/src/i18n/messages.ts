@@ -34,6 +34,19 @@ export interface ModeCard {
   previewAlt: string;
 }
 
+/** One paragraph of the instruction card; `label` is the bold lead-in. */
+export interface InstructionItem {
+  label?: string;
+  text: string;
+}
+
+/** Text card of «Інструкція» (`45:3236` etc.): bold lead, items, closing. */
+export interface Instruction {
+  lead: string;
+  items: InstructionItem[];
+  closing: string;
+}
+
 export interface Messages {
   /** Label inside the language pill: the current language. */
   langLabel: string;
@@ -61,8 +74,37 @@ export interface Messages {
     disabled: Notice;
     /** `45:3600` / `47:4007`: «з 18:00 до 22:00». */
     schedule: Notice & { from: string; to: string };
-    /** `26:1957` / `47:4183`; only the comet card for now. */
+    /** `26:1957` / `47:4183`. */
     modes: { title: string; cards: ModeCard[] };
+    /** Comet `45:3236` / `47:4579`, Milky Way `47:4889` / `34:4109`, Palette
+     *  `45:3338` / `47:5394`. */
+    instructions: {
+      title: string;
+      cta: string;
+      byMode: Record<InteractiveMode, Instruction>;
+    };
+    /** `31:2237` / `34:4171` / `38:2192` and their ENG copies. */
+    setup: {
+      color: string;
+      width: string;
+      palette: string;
+      start: string;
+      /** Request failed for a reason other than the screen; ours. */
+      failed: string;
+    };
+    /** `34:2820` / `47:3825`: h3 + body above the ring. */
+    queue: Notice;
+    /** `89:1852` / `89:1915` (portrait), `31:2523` / `84:3543` (landscape). */
+    fade: {
+      title: string;
+      titleLandscape: string;
+      rotate: string;
+      hint: string;
+    };
+    /** `29:2078` / `47:5943`: «Таймер: 00:31». */
+    drawing: { timer: string };
+    /** `38:2770` / `89:1596`. */
+    final: { title: string; body: string };
   };
 }
 
@@ -73,8 +115,11 @@ export interface Messages {
  */
 export const SCHEDULE_HOURS = { open: '18:00', close: '22:00' } as const;
 
-/** Only «Комета» ships for now; the other two modes come later. */
-const COMET_PREVIEW = '/modes/comet.jpg';
+const PREVIEWS: Record<InteractiveMode, string> = {
+  comet: '/modes/comet.jpg',
+  'milky-way': '/modes/milky-way.jpg',
+  palette: '/modes/palette.jpg',
+};
 
 const PHOTOS = {
   hero: '/mission/facade-night-front.jpg',
@@ -193,7 +238,7 @@ const uk: Messages = {
       cards: [
         {
           mode: 'comet',
-          preview: COMET_PREVIEW,
+          preview: PREVIEWS.comet,
           title: 'Комета',
           body:
             'Кожен ваш жест запускає на фасаді яскраву комету. Лінії не ' +
@@ -202,7 +247,149 @@ const uk: Messages = {
             'фантазії: малюйте динамічні візерунки, які змінюються щосекунди!',
           previewAlt: 'Комета на нічному небі',
         },
+        {
+          mode: 'milky-way',
+          preview: PREVIEWS['milky-way'],
+          title: 'Чумацький шлях',
+          body:
+            'Створи власну яскраву галактику! Обери товщину пензля перед ' +
+            'стартом, а далі — просто малюй. Кожен твій рух автоматично ' +
+            'наповнюватиметься новими, випадковими кольорами, перетворюючи ' +
+            'екран на справжнє зоряне скупчення.',
+          previewAlt: 'Галактика',
+        },
+        {
+          mode: 'palette',
+          preview: PREVIEWS.palette,
+          title: 'Палітра',
+          body:
+            'Керуйте кольором та створюйте продумані шедеври! У цьому режимі ' +
+            'ви не просто малюєте — ви граєте з гармонією. Обери свій настрій ' +
+            "серед чотирьох унікальних палітр, але пам'ятай: кожна нова лінія " +
+            'змінює всю картину. Готові до творчого виклику?',
+          previewAlt: 'Кольорові смуги',
+        },
       ],
+    },
+    instructions: {
+      title: 'Інструкція',
+      cta: 'Продовжити',
+      byMode: {
+        comet: {
+          lead: 'Запускайте власну зірку в режимі “Комета”!',
+          items: [
+            {
+              label: 'Ваш колір та рух:',
+              text:
+                'Оберіть бажаний відтінок і створюйте світлові лінії прямо ' +
+                'на фасаді.',
+            },
+            {
+              label: 'Ефект комети:',
+              text:
+                'Ваш пензель не просто малює — він має яскравий сяючий ' +
+                'епіцентр та розкішний кольоровий шлейф, що тягнеться за ' +
+                'кожним рухом.',
+            },
+            {
+              label: 'Жива абстракція:',
+              text:
+                'Малюнки не застигають на матриці. Вони плавно розчиняються ' +
+                'в темряві за 2-3 секунди, створюючи безперервну та динамічну ' +
+                'гру світла.',
+            },
+          ],
+          closing:
+            'Насолоджуйтесь власним світловим витвіром та фотографуйте ' +
+            'впродовж 40 секунд, поки триватиме ваша черга.',
+        },
+        'milky-way': {
+          lead: 'Створюйте сяючі шедеври в режимі “Чумацький шлях”!',
+          items: [
+            {
+              label: 'Магія кольору:',
+              text:
+                'Кожен ваш рух автоматично забарвлюється в нові яскраві ' +
+                'відтінки.',
+            },
+            {
+              label: 'Повний контроль:',
+              text:
+                'Керуйте своїм «світловим пензлем». Обравши товщину пензля ' +
+                'перед початком.',
+            },
+            {
+              label: 'Ефект падаючої зірки:',
+              text:
+                'Ваші малюнки не статичні. Вони плавно слідують за вами та ' +
+                'красиво розчиняються в просторі, створюючи безперервне ' +
+                'світлове шоу.',
+            },
+          ],
+          closing:
+            'Насолоджуйтесь власним світловим витвіром та фотографуйте ' +
+            'впродовж 40 секунд, поки триватиме ваша черга.',
+        },
+        palette: {
+          lead: 'Створюйте продумані композиції в режимі «Палітра»!',
+          items: [
+            {
+              label: 'Магія чотирьох палітр:',
+              text:
+                'Оберіть одну з 4 доступних колірних комбінацій, які будуть ' +
+                'циклічно повторюватись. Кожна ваша нова лінія автоматично ' +
+                'забарвлюватиметься в наступний відтінок з обраної вами ' +
+                'палітри.',
+            },
+            {
+              label: 'Правило двох ліній:',
+              text:
+                'Намалюйте першу лінію, потім відірвіть палець і створіть ' +
+                'другу. Але будьте уважні: щойно ви торкнетеся екрана втретє, ' +
+                'ваша найперша лінія миттєво зникне! На фасаді одночасно ' +
+                'можуть світитися лише два штрихи.',
+            },
+            {
+              label: 'Безперервне оновлення:',
+              text:
+                'Кожна нова дія витісняє першу лінію. Це перетворює ' +
+                'малювання на захопливий творчий процес, де композиція не ' +
+                'стоїть на місці, а постійно живе та змінюється разом із ' +
+                'вашими рухами.',
+            },
+          ],
+          closing:
+            'Насолоджуйтесь власним світловим витвіром та фотографуйте ' +
+            'впродовж 40 секунд, поки триватиме ваша черга.',
+        },
+      },
+    },
+    setup: {
+      color: 'Обери колір',
+      width: 'Обери ширину',
+      palette: 'Обери палітру',
+      start: 'Почати',
+      failed: 'Не вдалося надіслати запит. Спробуйте ще раз.',
+    },
+    queue: {
+      title: 'Зачекайте будь-ласка!',
+      body: 'Після завершення таймеру настане ваша черга.',
+    },
+    fade: {
+      title: 'Початок через',
+      titleLandscape: 'Початок через',
+      rotate: 'Переверніть смартфон в горизонтальне положення.',
+      hint:
+        'Рухайте пальцем по зображенню фасаду, і світло вашого доторку ' +
+        'проявиться на фасаді в реальному часі.',
+    },
+    drawing: { timer: 'Таймер' },
+    final: {
+      title: 'Ти чудово\nвпорався!',
+      body:
+        'Знімайте фото та відео! Кожен ваш малюнок унікальний. Збережіть ' +
+        'своє персональне світлове шоу на камеру! Чекаємо відгуки у ' +
+        'соц-мережах',
     },
   },
 };
@@ -314,7 +501,7 @@ const en: Messages = {
       cards: [
         {
           mode: 'comet',
-          preview: COMET_PREVIEW,
+          preview: PREVIEWS.comet,
           title: 'Comet',
           body:
             'Every gesture launches a bright comet across the facade. Lines ' +
@@ -323,7 +510,137 @@ const en: Messages = {
             'dynamic patterns that change every second!',
           previewAlt: 'Comet in the night sky',
         },
+        {
+          mode: 'milky-way',
+          preview: PREVIEWS['milky-way'],
+          title: 'Milky Way',
+          body:
+            'Create your own vibrant galaxy! Choose your brush size before ' +
+            'you start, then just draw. Each stroke automatically fills with ' +
+            'new, random colors, turning the screen into a dazzling cluster ' +
+            'of stars.',
+          previewAlt: 'Galaxy',
+        },
+        {
+          mode: 'palette',
+          preview: PREVIEWS.palette,
+          title: 'Palette',
+          body:
+            'Master color and create thoughtful masterpieces! In this mode, ' +
+            "you don't just draw — you play with harmony. Set the mood with " +
+            'one of four unique palettes, but remember: each new line ' +
+            'changes the whole picture. Ready for a creative challenge?',
+          previewAlt: 'Colour stripes',
+        },
       ],
+    },
+    instructions: {
+      title: 'Instructions',
+      cta: 'Continue',
+      byMode: {
+        comet: {
+          lead: 'Launch your own star in “Comet” mode!',
+          items: [
+            {
+              label: 'Your color and movement:',
+              text:
+                'Choose your favorite shade and draw lines of light directly ' +
+                'on the facade.',
+            },
+            {
+              label: 'The comet effect:',
+              text:
+                'Your brush does more than draw — it has a bright, glowing ' +
+                'core and a vibrant trail of color that follows your every ' +
+                'move.',
+            },
+            {
+              label: 'Living abstraction:',
+              text:
+                'Your drawings don’t stay frozen on the display. They gently ' +
+                'fade into the darkness in 2–3 seconds, creating a ' +
+                'continuous, dynamic play of light.',
+            },
+          ],
+          closing:
+            'Enjoy your own light creation and take photos during your ' +
+            '40-second turn.',
+        },
+        'milky-way': {
+          lead: 'Create glowing masterpieces in “Milky Way” mode!',
+          items: [
+            {
+              label: 'Full control:',
+              text:
+                'Take charge of your “light brush”. Choose your brush ' +
+                'thickness before you begin.',
+            },
+            {
+              label: 'Color magic:',
+              text: 'Every movement automatically takes on new, vibrant hues.',
+            },
+            { text: 'Create your own composition' },
+          ],
+          closing:
+            'Enjoy your light creation and take photos during your ' +
+            '40-second turn.',
+        },
+        palette: {
+          lead: 'Create thoughtful compositions in Palette mode!',
+          items: [
+            {
+              label: 'The magic of four palettes:',
+              text:
+                'Choose one of 4 available color combinations. Each new line ' +
+                'automatically takes on the next shade in your chosen palette.',
+            },
+            {
+              label: 'The two-line rule:',
+              text:
+                'Draw your first line, then lift your finger and draw a ' +
+                'second. But be careful: as soon as you touch the screen a ' +
+                'third time, your first line instantly disappears! Only two ' +
+                'strokes can glow on the façade at once.',
+            },
+            {
+              label: 'Constant renewal:',
+              text:
+                'Each new action replaces the oldest line. This turns drawing ' +
+                'into an exciting creative process: your composition never ' +
+                'stands still, but keeps evolving with your movements.',
+            },
+          ],
+          closing:
+            'Enjoy your own light creation and take photos during your ' +
+            '40-second turn.',
+        },
+      },
+    },
+    setup: {
+      color: 'Choose a color',
+      width: 'Choose width',
+      palette: 'Choose a palette',
+      start: 'Start',
+      failed: 'Could not send the request. Please try again.',
+    },
+    queue: {
+      title: 'Please wait!',
+      body: 'It will be your turn when the timer ends.',
+    },
+    fade: {
+      title: 'Starting in',
+      titleLandscape: 'Starts in',
+      rotate: 'Turn your smartphone to landscape mode.',
+      hint:
+        'Move your finger across the façade image and watch your touch ' +
+        'light up the façade in real time.',
+    },
+    drawing: { timer: 'Timer' },
+    final: {
+      title: 'You did\ngreat!',
+      body:
+        'Take photos and videos! Every drawing is unique. Capture your ' +
+        'personal light show on camera! Share your feedback on social media.',
     },
   },
 };

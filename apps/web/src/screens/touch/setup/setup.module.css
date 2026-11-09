@@ -1,0 +1,168 @@
+/* Setup screens on the 393 × 852 grid, content from y = 157.
+   Colour 31:2237: h2 Unbounded Medium 23.1 at (24, 157); wheel 298 at
+   y = 241; button frame at y = 596.
+   Width 34:4171: h2 at (30, 172); cards 327 × 101 at y = 235 / 345 / 456;
+   button at y = 596.
+   Palette 38:2192: h2 at (24, 165); cards 307 × 114 at y = 213 / 334 /
+   456 / 577; button at y = 725. */
+.setup {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 var(--space-6) 1.5rem;
+}
+
+.title {
+  align-self: stretch;
+  margin: 0;
+  font-family: var(--font-unbounded);
+  font-weight: 500;
+  font-size: 1.4438rem;
+  line-height: normal;
+}
+
+[data-kind='width'] .title {
+  margin: 0.9375rem 0 0 0.375rem;
+}
+
+[data-kind='palette'] .title {
+  margin-top: 0.5rem;
+}
+
+/* colour wheel */
+.wheel {
+  position: relative;
+  width: 18.625rem;
+  height: 18.625rem;
+  margin-top: 3.4375rem;
+  border-radius: 50%;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.wheelImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.marker {
+  position: absolute;
+  width: 0.7188rem;
+  height: 0.7188rem;
+  border: 0.0513rem solid #fff;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* width / palette cards */
+.options {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+[data-kind='width'] .options {
+  margin-top: 2.125rem;
+  gap: 0.625rem;
+}
+
+[data-kind='palette'] .options {
+  margin-top: 1.1875rem;
+  gap: 0.4375rem;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 1.25rem;
+  color: inherit;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease-out,
+    transform 120ms ease-out;
+}
+
+.option:active {
+  transform: scale(0.98);
+}
+
+.option:focus-visible {
+  outline: 0.125rem solid rgba(255, 255, 255, 0.6);
+  outline-offset: 0.125rem;
+}
+
+/* Selected: the hidden card style of design-system.md § 6.1 / § 7. */
+.option[aria-checked='true'] {
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow:
+    inset 1rem 1rem 0.5563rem -1.1125rem #fff,
+    inset -0.7813rem -0.7813rem 0.3875rem -0.6688rem #b3b3b3,
+    0 0 1.5rem rgba(255, 255, 255, 0.12);
+}
+
+.widthOption {
+  width: 20.4375rem;
+  height: 6.3125rem;
+}
+
+.widthOption img {
+  display: block;
+  height: auto;
+}
+
+.paletteOption {
+  width: 19.1875rem;
+  height: 7.125rem;
+}
+
+/* Stripe 270 × 83 inside the 307 × 114 card: three fills 87 / 96 / 87,
+   outer corners 8. */
+.stripe {
+  display: flex;
+  width: 16.875rem;
+  height: 5.1875rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.stripe > span {
+  flex: 87;
+}
+
+.stripe > span:nth-child(2) {
+  flex: 96;
+}
+
+/* button */
+.action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+[data-kind='color'] .action {
+  margin-top: 3.5625rem;
+}
+
+[data-kind='width'] .action {
+  margin-top: 2.4375rem;
+}
+
+[data-kind='palette'] .action {
+  margin-top: 2.125rem;
+}
+
+.error {
+  margin: 0;
+  max-width: 19rem;
+  text-align: center;
+  font-family: var(--font-montserrat);
+  font-size: 0.75rem;
+  line-height: normal;
+}

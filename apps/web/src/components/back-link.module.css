@@ -13,9 +13,19 @@
   outline: 0.125rem solid rgba(255, 255, 255, 0.6);
 }
 
+.button {
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
 .arrow {
   width: 1.75rem;
   height: 1.125rem;
-  transform: scaleX(-1);
   filter: drop-shadow(0 0.1875rem 0.1875rem var(--color-shadow));
+}
+
+.back {
+  transform: scaleX(-1);
 }
