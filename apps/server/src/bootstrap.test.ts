@@ -125,7 +125,7 @@ const logger = new StructuredLogger({ write: () => {} });
 const ENV = {
   CCS_MODE: 'offline',
   PORT: '0',
-  SESSION_MS: '150',
+  SESSION_MS: '400',
   FADE_MS: '30',
   DISCONNECT_GRACE_MS: '80',
 };
@@ -207,10 +207,11 @@ describe('Application (composition root)', () => {
       mode: 'comet',
       params: { head: '#FF4848', tail: '#FF9F3F' },
     })) as SessionRequestResult;
-    assert.ok(t1.success && t1.position === 0 && t1.durationMs === 150);
+    assert.ok(t1.success && t1.position === 0 && t1.durationMs === 400);
     assert.ok(t1.waitMs > 0 && t1.waitMs <= 30, `countdown ${t1.waitMs}`);
     assert.deepEqual(await fade1, { waitMs: 30, position: 0 });
     assert.equal((await start1).mode, 'comet');
+    const end1 = once<SessionEnd>(c1, 'session:end');
     c1.emit('touch:event', {
       x: 0.25,
       y: 0.75,
@@ -229,7 +230,7 @@ describe('Application (composition root)', () => {
       await turn('user-0000000001')
     ).json()) as SessionSnapshot;
     assert.ok(active.step === 'active' && active.sessionId === t1.sessionId);
-    assert.ok(active.remainingMs > 0 && active.remainingMs <= 150);
+    assert.ok(active.remainingMs > 0 && active.remainingMs <= 400);
     assert.equal((await turn('user-0000000002')).status, 404);
     assert.equal((await turn('x')).status, 400);
 
@@ -252,11 +253,14 @@ describe('Application (composition root)', () => {
     c2.connect();
     await once(c2, 'connect');
     await sleep(80);
-    assert.equal((await health()).sessions.waiting, 1, 'kept within grace');
+    assert.equal(
+      (await turn('user-0000000002')).status,
+      200,
+      'kept within grace',
+    );
 
     // c1 completes, c2's fade and then session follow.
-    const end1 = await once<SessionEnd>(c1, 'session:end');
-    assert.equal(end1.reason, 'completed');
+    assert.equal((await end1).reason, 'completed');
     const start2 = await once<SessionInfo>(c2, 'session:start');
     assert.equal(start2.mode, 'palette');
 

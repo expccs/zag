@@ -5,6 +5,22 @@ Handoff log between agent sessions. Newest entry on top. See the
 
 ---
 
+- **Timestamp:** 2026-11-10T09:20:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:** CI `check` on `0037fb3` failed in
+  `apps/server/src/bootstrap.test.ts` ("kept within grace", 0 !== 1, then
+  the file hit the 20 s timeout because the clients stayed connected).
+  Cause: the e2e test ran c1's 150 ms session against ~110 ms of sleeps
+  plus the new HTTP fetches; on the slow runner c1 finished and c2's fade
+  started before the assertion, so `health.sessions.waiting` was 0. Fix
+  (uncommitted): `SESSION_MS` 400 in the test env, the grace assertion
+  checks `GET /session/user-2` → 200 instead of the waiting count, and
+  c1's `session:end` listener is registered right after `session:start`.
+  6 local runs + the full suite (65) green.
+- **Next step:** commit the test fix and re-run the CI `check`.
+
+---
+
 - **Timestamp:** 2026-11-09T17:30:00Z
 - **Agent / model:** Claude Fable 5.1
 - **What changed:** Turn restore after a page reload (uncommitted on
