@@ -17,7 +17,12 @@ Handoff log between agent sessions. Newest entry on top. See the
   checks `GET /session/user-2` → 200 instead of the waiting count, and
   c1's `session:end` listener is registered right after `session:start`.
   6 local runs + the full suite (65) green.
-- **Next step:** commit the test fix and re-run the CI `check`.
+  Also: `apps/web/public/expolight.png` / `kabluka.png` replaced by the
+  original Figma bitmaps (3640 × 1012, 2000 × 566; byte-identical to
+  `docs/design/assets/logos`, verified against the Figma image hash); the
+  old 254 / 164 px copies were blurry on 3× phones. Same files feed the
+  footer, `TouchChrome` and `LandscapeBar`.
+- **Next step:** commit the test fix and the logos, re-run the CI `check`.
 
 ---
 

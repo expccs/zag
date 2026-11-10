@@ -366,7 +366,9 @@ y = 241. Маркер `icons/color-marker.svg`: круг 11.5, обводка `#
 | `mission-photos/*.jpg` | четыре фото лендинга | 474 × 316 и др. |
 
 Файлы `*@1x.png` и `*-rendered-*.png` — рендеры Figma в размере макета,
-для сравнения; в продакшн идут исходники и SVG.
+для сравнения; в продакшн идут исходники и SVG. `logos/expolight.png` и
+`logos/kabluka.png` — оригинальные битмапы из Figma (sha1 файла = image
+hash заливки), они лежат в `apps/web/public` как есть, без уменьшения.
 
 В `apps/web/public` лежат уменьшенные копии (`sips`): `color-wheel.png`
 600, `facade-bw.jpg` 1600 × 825 — окно кадрирования `Rectangle 5` из
