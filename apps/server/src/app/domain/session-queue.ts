@@ -65,6 +65,12 @@ export class SessionQueue<T> extends EventEmitter<SessionQueueEvents<T>> {
     return this.waiting.some((task) => task.userId === userId);
   }
 
+  /** The user's running task, else the first waiting one; `null` if none. */
+  taskOf(userId: string): QueueTask<T> | null {
+    if (this.current && this.current.userId === userId) return this.current;
+    return this.waiting.find((task) => task.userId === userId) ?? null;
+  }
+
   /**
    * Appends the user's turn; its first task starts now when the queue is
    * idle. Returns the place: `position: 0` means the turn is running and

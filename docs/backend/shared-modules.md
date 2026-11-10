@@ -179,6 +179,7 @@ CCS ──socket.io──▶ CloudClient ──stateChange──▶ AppState ─
 | S→C                                 | `session:start`   | `{ sessionId, mode, durationMs, endsAt }`                                                      | —                                                                                                                                                                               |
 | S→C                                 | `session:end`     | `{ reason: 'completed' \| 'skipped' }`                                                         | —                                                                                                                                                                               |
 | C→S                                 | `touch:event`     | `{ x, y, touch: 0\|1 }`, `x`/`y` ∈ [0, 1], ноль в **левом нижнем** углу (UV: `y` растёт вверх) | —                                                                                                                                                                               |
+| HTTP `GET /session/:userId`         | —                 | `userId` в пути                                                                                | `200` `SessionSnapshot`: `{ step: 'waiting', sessionId, request, durationMs, place: { waitMs, position } }` или `{ step: 'active', …, remainingMs }`; `404` — хода нет; `400` — невалидный `userId` |
 
 Правила:
 
@@ -211,6 +212,14 @@ CCS ──socket.io──▶ CloudClient ──stateChange──▶ AppState ─
   `queue:update`).
 - Отмена или обрыв во время своего fade завершает ход как сеанс:
   пользователь получает `session:end { skipped }`, TD — `session:end`.
+- Перезагрузка страницы: состояние хода живёт в памяти вкладки, поэтому
+  при загрузке клиент делает `GET /session/:userId` (тот же `userId`, что
+  в handshake). Если ход ещё в очереди (разрыв короче grace), сервер
+  отдаёт `SessionSnapshot` — место с `waitMs` / `position` или остаток
+  идущего сеанса, — и клиент сразу открывает экран очереди с этим
+  временем; дальше его правят `queue:update` / `session:start` по сокету.
+  Тот же снимок сервер использует для ресинка при `connect` и клиент —
+  по ответу `EQUEUED` на повторный запрос (вместо повторных попыток).
 - При переходе `screen` из `interactive` в любой другой очередь очищается,
   все участники получают `session:end { reason: 'skipped' }`.
 
@@ -308,6 +317,11 @@ true })` запускается только когда `flags.locationRestricti
   считаются от локального `Date.now()` в момент события, `endsAt` сервера
   не используется. При реконнекте стор повторяет `session:request`:
   `EQUEUED` — место цело, новый билет — встали заново, иначе ход потерян.
+  При загрузке страницы (`components/TurnRestorer.tsx`, стор стартует в
+  фазе `restoring`) делается `GET /session/:userId`
+  (`socket/session-restore.ts`): найденный ход восстанавливается в стор
+  (`queued` / `fade` / `active` с временем из ответа) и пользователь
+  переводится на `/touch/session`; `404` или ошибка сети → `idle`.
   Неудачный запрос (`EINTERNAL`) возвращает на экран настройки с
   сообщением. Стрелка «назад» в очереди и во время fade —
   `session:cancel`; уход с `/touch` сбрасывает стор и закрывает сокет.
@@ -404,6 +418,7 @@ Socket.IO + `/health`), он не раздаёт статику.
 - `Application` + `socket-api` через реальный socket.io: `EAUTH`,
   `state:update`, `geo:check` при выключенной геозоне, очередь двух
   пользователей, маршрутизация `touch:event`, grace при реконнекте,
+  `GET /session/:userId` (active / waiting / 404 / 400),
   `techPause` из CCS → `maintenance` + `session:end`, `ENOTALLOWED`,
   удаление по истечении grace.
 

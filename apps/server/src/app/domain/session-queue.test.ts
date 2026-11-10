@@ -165,6 +165,18 @@ describe('SessionQueue', () => {
     assert.deepEqual(queue.abort(), []);
   });
 
+  it('finds the task of a user: the running one, else the first waiting', () => {
+    const queue = new SessionQueue<Step>();
+    assert.equal(queue.taskOf('u1'), null);
+    queue.enqueue(turn('a', 'u1'));
+    queue.enqueue(turn('b', 'u2'));
+    assert.equal(queue.taskOf('u1')?.payload, 'fade');
+    assert.equal(queue.taskOf('u2')?.id, 'b');
+    assert.equal(queue.taskOf('u2')?.payload, 'fade');
+    assert.equal(queue.taskOf('u3'), null);
+    queue.clear();
+  });
+
   it('rejects an empty or mixed turn as a programming error', () => {
     const queue = new SessionQueue<Step>();
     assert.throws(() => queue.enqueue([]), TypeError);

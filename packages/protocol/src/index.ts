@@ -115,6 +115,33 @@ export interface SessionInfo {
 
 export type SessionEndReason = 'completed' | 'skipped';
 
+/** HTTP route of `SessionSnapshot`: `GET ${SESSION_PATH}/:userId`. */
+export const SESSION_PATH = '/session';
+
+/**
+ * The user's turn as the server holds it, over HTTP (`GET
+ * /session/:userId`, shared-modules.md § 4): a phone that reloaded the
+ * page restores the queue screen from it before the socket is up. `404`
+ * when the user has no turn. `waiting`: the place as `queue:update` would
+ * give it (`position: 0` = the fade is on); `active`: the session runs
+ * for `remainingMs` more.
+ */
+export type SessionSnapshot =
+  | {
+      step: 'waiting';
+      sessionId: string;
+      request: SessionRequest;
+      durationMs: number;
+      place: QueuePlace;
+    }
+  | {
+      step: 'active';
+      sessionId: string;
+      request: SessionRequest;
+      durationMs: number;
+      remainingMs: number;
+    };
+
 export interface SessionEnd {
   reason: SessionEndReason;
 }

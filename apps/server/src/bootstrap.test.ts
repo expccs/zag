@@ -10,6 +10,7 @@ import type {
   SessionEnd,
   SessionInfo,
   SessionRequestResult,
+  SessionSnapshot,
 } from '@zag/protocol';
 import { ZagAppState } from './app/domain/app-state';
 import { CLIENT_GATEWAY, type ClientGateway } from './app/ports/client-gateway';
@@ -28,7 +29,7 @@ import {
   ConfigLoader,
   type ServerConfig,
 } from './infrastructure/config/config';
-import { HTTP_SERVER } from './infrastructure/http/health-http-server';
+import { HTTP_SERVER } from './infrastructure/http/http-api-server';
 import { StructuredLogger } from './infrastructure/logging/structured-logger';
 
 const flush = (): Promise<void> =>
@@ -221,12 +222,28 @@ describe('Application (composition root)', () => {
     });
     assert.deepEqual(dup, { success: false, code: 'EQUEUED' });
 
+    // A reloaded page asks over HTTP: c1 draws, c2 has no turn, a bad id
+    // is rejected.
+    const turn = (userId: string) => fetch(`${url}/session/${userId}`);
+    const active = (await (
+      await turn('user-0000000001')
+    ).json()) as SessionSnapshot;
+    assert.ok(active.step === 'active' && active.sessionId === t1.sessionId);
+    assert.ok(active.remainingMs > 0 && active.remainingMs <= 150);
+    assert.equal((await turn('user-0000000002')).status, 404);
+    assert.equal((await turn('x')).status, 400);
+
     // c2 waits at position 1; a short disconnect keeps the place.
     const t2 = (await c2.emitWithAck('session:request', {
       mode: 'palette',
       params: { palette: 2 },
     })) as SessionRequestResult;
     assert.ok(t2.success && t2.position === 1 && t2.waitMs > 0);
+    const waiting = (await (
+      await turn('user-0000000002')
+    ).json()) as SessionSnapshot;
+    assert.ok(waiting.step === 'waiting' && waiting.place.position === 1);
+    assert.equal(waiting.request.mode, 'palette');
     const health = async () =>
       (await (await fetch(`${url}/health`)).json()) as HealthReport;
     assert.equal((await health()).sessions.waiting, 1);

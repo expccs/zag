@@ -30,7 +30,7 @@ apps/server/src/
 │   ├── facade/composite-facade.ts # CompositeFacade: команды в TD и CCS, поток — только в TD
 │   ├── socket/socket-server.ts  # ZagSocketServer implements ClientGateway; session:*, touch:event → SessionApi
 │   ├── touch-designer/          # TouchDesignerClient (ws), OfflineFacade, FacadeGatewayFactory
-│   ├── http/health-http-server.ts # HealthHttpServer, HTTP_SERVER
+│   ├── http/http-api-server.ts  # HttpApiServer (/health, GET /session/:userId), HTTP_SERVER
 │   ├── logging/structured-logger.ts
 │   └── config/config.ts         # ConfigLoader: env → ServerConfig, SERVER_CONFIG
 └── bootstrap.ts                 # Application: регистрации tsyringe + lifecycle, точка входа
@@ -81,7 +81,9 @@ apps/server/src/
   до первого `resolve` — последняя регистрация выигрывает
   (`bootstrap.test.ts`, «container overrides»).
 - Цикл `httpServer → health → clients → httpServer` разорван ленивым
-  колбэком: `/health` резолвит `HealthService` при каждом запросе.
+  колбэком: `/health` резолвит `HealthService`, `GET /session/:userId` —
+  `SESSION_API.snapshot(userId)` при каждом запросе. CORS-заголовок только
+  для `ALLOWED_ORIGINS` (dev-сервер Vite на другом порту).
 
 ## Жизненный цикл
 
@@ -128,6 +130,9 @@ CCS в фоне с ретраями логина; на каждом событи
   `cancel`. `userConnected` также пересылает пользователю его текущее
   место (`queue.places()`, включая `position: 0` в fade) или
   `session:start` с остатком времени.
+- `snapshot(userId)` → `SessionSnapshot | null` (`queue.taskOf`): ход
+  пользователя для HTTP `GET /session/:userId` (перезагруженная
+  страница) и основа ресинка при `connect`.
 - Пока очередь не пуста, `setInterval(syncMs)` (`QUEUE_SYNC_MS`) шлёт
   всем из `queue.places()` их `queue:update` заново — сервер задаёт время,
   телефоны только отсчитывают от последнего значения.

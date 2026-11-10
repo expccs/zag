@@ -268,6 +268,32 @@ describe('SessionService', () => {
     }
   });
 
+  it('snapshots a turn for a phone that reloaded the page', async () => {
+    const { service } = createService({}, { ...FAST, sessionMs: 200 });
+    assert.equal(service.snapshot('u1'), null);
+    const first = service.request('u1', COMET);
+    const palette = { mode: 'palette' as const, params: { palette: 1 } };
+    service.request('u2', palette);
+    const fading = service.snapshot('u1');
+    assert.ok(fading && fading.step === 'waiting');
+    assert.equal(fading.place.position, 0);
+    assert.ok(fading.place.waitMs > 0 && fading.place.waitMs <= 20);
+    assert.equal(fading.sessionId, first.sessionId);
+    const waiting = service.snapshot('u2');
+    assert.ok(waiting && waiting.step === 'waiting');
+    assert.equal(waiting.place.position, 1);
+    assert.deepEqual(waiting.request, palette);
+    assert.equal(waiting.durationMs, 200);
+
+    await sleep(30);
+    const active = service.snapshot('u1');
+    assert.ok(active && active.step === 'active');
+    assert.ok(active.remainingMs > 0 && active.remainingMs <= 200);
+    assert.equal(active.sessionId, first.sessionId);
+    assert.equal(service.snapshot('u3'), null);
+    service.stop();
+  });
+
   it('aborts every turn when the screen leaves interactive', async () => {
     const { service, state, clients, facade } = createService();
     const ticket = service.request('u1', COMET);

@@ -5,6 +5,33 @@ Handoff log between agent sessions. Newest entry on top. See the
 
 ---
 
+- **Timestamp:** 2026-11-09T17:30:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:** Turn restore after a page reload (uncommitted on
+  `master`, on top of `9c717b5`):
+  - Protocol: `SESSION_PATH` + `SessionSnapshot` (`waiting` with
+    `place`, `active` with `remainingMs`). Server: `SessionQueue.taskOf`,
+    `SessionService.snapshot(userId)` (also drives the `connect` resync),
+    `HttpApiServer` (renamed from `HealthHttpServer`) serves
+    `GET /session/:userId` → 200 / 404 / 400 with CORS for
+    `ALLOWED_ORIGINS`. Tests: queue, service, e2e HTTP in
+    `bootstrap.test.ts`.
+  - Web: store starts in `restoring`; `TurnRestorer` (in `App.tsx`) calls
+    `session.restore()` on load (`socket/session-restore.ts` fetch) and
+    navigates to `/touch/session` with the server's wait time;
+    `EQUEUED` on `start()` now resumes the held turn instead of looping.
+    Vite proxy + SW denylist for `/session/`; nginx `location /session/`
+    in `deploy/nginx/zag.conf` and `docs/monorepo.md`.
+  - The grace-period removal tried earlier this session was rolled back by
+    the user; `DISCONNECT_GRACE_MS` stays (10 s).
+- **Next step:** verify the reload on a real phone (reload within the
+  grace period lands on the queue screen with the right seconds), then
+  commit stages 2–4.
+- **Blockers / open questions:** nginx on the host needs the new
+  `location /session/` block before the web build that calls it is
+  deployed; otherwise the SPA fallback answers with `index.html` and the
+  client treats it as "no turn".
+
 - **Timestamp:** 2026-11-09T15:30:00Z
 - **Agent / model:** Claude Fable 5.1
 - **What changed:** Interactive-flow UI in `apps/web` (stage 4; uncommitted,

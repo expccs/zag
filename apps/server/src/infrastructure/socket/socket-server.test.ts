@@ -11,7 +11,7 @@ import {
 } from '@zag/protocol';
 import type { LogFields } from '../../app/ports/logger';
 import { SessionError, type SessionApi } from '../../app/ports/session-api';
-import { HealthHttpServer } from '../http/health-http-server';
+import { HttpApiServer } from '../http/http-api-server';
 import { StructuredLogger } from '../logging/structured-logger';
 import { ZagSocketServer } from './socket-server';
 
@@ -53,6 +53,11 @@ class FakeSessionApi implements SessionApi {
   cancel(userId: string): boolean {
     this.calls.push(`cancel:${userId}`);
     return true;
+  }
+
+  snapshot(userId: string): null {
+    this.calls.push(`snapshot:${userId}`);
+    return null;
   }
 
   handleTouch(userId: string, event: TouchEvent): boolean {
@@ -117,7 +122,9 @@ describe('socket server', () => {
     const logger = new StructuredLogger({
       write: (line) => records.push(JSON.parse(line) as LogRecord),
     });
-    const httpServer = HealthHttpServer.create({
+    const httpServer = HttpApiServer.create({
+      session: () => null,
+      allowedOrigins: [],
       health: () => ({
         ok: true,
         version: 'test',

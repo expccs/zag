@@ -105,9 +105,10 @@ export const SessionView = () => {
   }
 
   switch (phase.phase) {
+    case 'restoring':
     case 'pending':
     case 'requesting':
-      // Landscape, ack on its way: the queue chrome without a number yet.
+      // Landscape, answer on its way: the queue chrome without a number yet.
       return <QueueView turnAt={0} onLeave={leave} orientation="landscape" />;
     case 'queued':
       return (

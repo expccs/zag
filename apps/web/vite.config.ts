@@ -34,7 +34,11 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,jpg,woff2}'],
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/socket\.io\//, /^\/health$/],
+        navigateFallbackDenylist: [
+          /^\/socket\.io\//,
+          /^\/health$/,
+          /^\/session\//,
+        ],
         runtimeCaching: [],
       },
     }),
@@ -43,6 +47,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/socket.io': { target: 'http://localhost:8080', ws: true },
+      '/session': { target: 'http://localhost:8080' },
     },
   },
   build: { sourcemap: true, target: 'es2022' },

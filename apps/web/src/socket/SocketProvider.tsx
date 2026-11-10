@@ -9,6 +9,7 @@ import {
 import { io } from 'socket.io-client';
 import { createConnectionStore } from './connection-store';
 import { createServerStateStore } from './server-state-store';
+import { fetchTurn } from './session-restore';
 import { createSessionStore } from './session-store';
 import { getUserId } from './user-id';
 import { SocketContext, type SocketContextValue } from './socket-context';
@@ -34,7 +35,9 @@ const createConnection = (url: string) => {
   const socket = createSocket(url);
   const connection = createConnectionStore(socket);
   const serverState = createServerStateStore(socket);
-  const session = createSessionStore(socket);
+  const session = createSessionStore(socket, {
+    fetchTurn: () => fetchTurn(url, getUserId()),
+  });
   return { socket, connection, serverState, session };
 };
 

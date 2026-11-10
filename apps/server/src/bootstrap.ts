@@ -26,8 +26,8 @@ import {
 } from './infrastructure/config/config';
 import {
   HTTP_SERVER,
-  HealthHttpServer,
-} from './infrastructure/http/health-http-server';
+  HttpApiServer,
+} from './infrastructure/http/http-api-server';
 import { CompositeFacade } from './infrastructure/facade/composite-facade';
 import { StructuredLogger } from './infrastructure/logging/structured-logger';
 import { ZagSocketServer } from './infrastructure/socket/socket-server';
@@ -166,11 +166,14 @@ export class Application {
     });
   }
 
-  // `/health` resolves the report lazily per request: the health service
-  // needs the socket server, which needs this http server.
+  // The routes resolve their services lazily per request: the health
+  // service needs the socket server, which needs this http server.
   private static provideHttpServer(container: DependencyContainer) {
-    return HealthHttpServer.create({
+    const config = container.resolve(SERVER_CONFIG);
+    return HttpApiServer.create({
       health: () => container.resolve(HealthService).report(),
+      session: (userId) => container.resolve(SESSION_API).snapshot(userId),
+      allowedOrigins: config.allowedOrigins,
     });
   }
 

@@ -6,6 +6,7 @@ import {
   type SessionInfo,
   type SessionRequest,
   type SessionRequestResult,
+  type SessionSnapshot,
   type TouchEvent,
 } from '@zag/protocol';
 import type { ZagSocket } from './socket-context';
@@ -16,6 +17,8 @@ import type { ZagSocket } from './socket-context';
  * server clock.
  */
 export type SessionPhase =
+  /** Page just loaded: `restore` is asking whether a turn survived. */
+  | { phase: 'restoring' }
   | { phase: 'idle' }
   /** Setup done; the request waits for the phone to turn to landscape. */
   | { phase: 'pending'; request: SessionRequest }
@@ -49,6 +52,11 @@ export type SessionPhase =
 export interface SessionStore {
   subscribe: (listener: () => void) => () => void;
   getSnapshot: () => SessionPhase;
+  /**
+   * Asks the server (HTTP) for the turn this phone may still hold after a
+   * reload and resumes it; resolves `true` when there was one.
+   */
+  restore: () => Promise<boolean>;
   /** Remembers the chosen mode; nothing is sent until `start`. */
   prepare: (request: SessionRequest) => void;
   /** Sends the prepared `session:request`; the phase follows the ack. */
@@ -61,7 +69,13 @@ export interface SessionStore {
   sendTouch: (event: TouchEvent) => void;
 }
 
+export interface SessionStoreOptions {
+  /** `GET /session/:userId` for this phone; `null` when there is no turn. */
+  fetchTurn: () => Promise<SessionSnapshot | null>;
+}
+
 const ACK_TIMEOUT_MS = 5_000;
+const RESTORING: SessionPhase = { phase: 'restoring' };
 const IDLE: SessionPhase = { phase: 'idle' };
 
 type LivePhase = Extract<SessionPhase, { phase: 'queued' | 'fade' | 'active' }>;
@@ -71,9 +85,12 @@ const isLive = (phase: SessionPhase): phase is LivePhase =>
   phase.phase === 'fade' ||
   phase.phase === 'active';
 
-export const createSessionStore = (socket: ZagSocket): SessionStore => {
+export const createSessionStore = (
+  socket: ZagSocket,
+  { fetchTurn }: SessionStoreOptions,
+): SessionStore => {
   const listeners = new Set<() => void>();
-  let snapshot: SessionPhase = IDLE;
+  let snapshot: SessionPhase = RESTORING;
 
   const set = (next: SessionPhase) => {
     snapshot = next;
@@ -108,6 +125,32 @@ export const createSessionStore = (socket: ZagSocket): SessionStore => {
     });
   };
 
+  // The server's snapshot of the turn, as the events would have built it.
+  const applyTurn = (turn: SessionSnapshot) => {
+    const { sessionId, request, durationMs } = turn;
+    if (turn.step === 'waiting') {
+      applyPlace(turn.place, sessionId, request, durationMs);
+      return;
+    }
+    set({
+      phase: 'active',
+      sessionId,
+      request,
+      durationMs,
+      endsAt: Date.now() + turn.remainingMs,
+    });
+  };
+
+  const restore = async (): Promise<boolean> => {
+    const turn = await fetchTurn();
+    if (turn) {
+      applyTurn(turn);
+      return true;
+    }
+    if (snapshot.phase === 'restoring') set(IDLE);
+    return false;
+  };
+
   const emitRequest = async (
     request: SessionRequest,
   ): Promise<SessionRequestResult> => {
@@ -130,6 +173,12 @@ export const createSessionStore = (socket: ZagSocket): SessionStore => {
     const result = await emitRequest(body);
     if (result.success) {
       applyPlace(result, result.sessionId, body, result.durationMs);
+    } else if (result.code === 'EQUEUED') {
+      // The server still holds a turn of this phone (reload within the
+      // grace period, or another tab): resume it instead of asking again.
+      const turn = await fetchTurn();
+      if (turn) applyTurn(turn);
+      else set(IDLE);
     } else if (snapshot.phase === 'requesting') {
       set({ phase: 'pending', request: body });
     }
@@ -183,6 +232,7 @@ export const createSessionStore = (socket: ZagSocket): SessionStore => {
       };
     },
     getSnapshot: () => snapshot,
+    restore,
     prepare: (body) => {
       set({ phase: 'pending', request: body });
     },

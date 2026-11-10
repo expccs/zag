@@ -20,7 +20,7 @@
   приходят в уже загруженное приложение через Socket.IO. Никакого
   Node-процесса, обслуживающего HTTP для UI, нет.
 - **Единственный рантайм-процесс — `apps/server`** (`bootstrap.ts`:
-  Socket.IO + `/health`). Он не раздаёт статику и не знает о UI.
+  Socket.IO + `/health` + `GET /session/:userId`). Он не раздаёт статику и не знает о UI.
 - Общие типы живут только в `packages/protocol`; дублировать интерфейсы
   событий в `web` и `server` нельзя.
 - Шрифты Unbounded и Montserrat — self-hosted через
@@ -132,8 +132,8 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         navigateFallback: '/index.html',
-        // сокет и health никогда не перехватываем
-        navigateFallbackDenylist: [/^\/socket\.io\//, /^\/health$/],
+        // сокет, health и /session/<userId> никогда не перехватываем
+        navigateFallbackDenylist: [/^\/socket\.io\//, /^\/health$/, /^\/session\//],
         runtimeCaching: [],          // всё, что нужно, в precache
       },
     }),
@@ -231,7 +231,8 @@ location /socket.io/ {
   proxy_set_header Connection "upgrade";
   proxy_read_timeout 3600s;
 }
-location = /health { proxy_pass http://127.0.0.1:8090; }
+location = /health   { proxy_pass http://127.0.0.1:8090; }
+location /session/   { proxy_pass http://127.0.0.1:8090; }  # восстановление хода после перезагрузки
 ```
 
 Релизы UI лежат в `/srv/zag/releases/<sha>/`, `/srv/zag/ui` — симлинк

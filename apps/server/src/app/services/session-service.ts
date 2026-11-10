@@ -3,6 +3,7 @@ import {
   INTERACTIVE_MODES,
   type SessionEndReason,
   type SessionRequest,
+  type SessionSnapshot,
   type SessionTicket,
   type TouchEvent,
 } from '@zag/protocol';
@@ -105,6 +106,34 @@ export class SessionService implements SessionApi {
     const removed = this.queue.remove(userId);
     if (removed) this.logger.info('session cancelled', { userId });
     return removed;
+  }
+
+  /**
+   * The user's turn as the events would have told it: the place while the
+   * turn waits or its fade runs, the remaining time while the session
+   * runs. Served over HTTP to a phone that reloaded the page and used to
+   * resync a reconnected socket.
+   */
+  snapshot(userId: string): SessionSnapshot | null {
+    const task = this.queue.taskOf(userId);
+    if (!task) return null;
+    const { id: sessionId, payload } = task;
+    const { request } = payload;
+    const { sessionMs: durationMs } = this.config;
+    if (this.queue.isCurrentUser(userId) && payload.step === 'session') {
+      const remainingMs = this.queue.currentRemainingMs();
+      return { step: 'active', sessionId, request, durationMs, remainingMs };
+    }
+    const place = this.queue.places().find((item) => item.userId === userId);
+    if (!place) return null;
+    const { waitMs, position } = place;
+    return {
+      step: 'waiting',
+      sessionId,
+      request,
+      durationMs,
+      place: { waitMs, position },
+    };
   }
 
   /**
@@ -227,28 +256,21 @@ export class SessionService implements SessionApi {
     this.syncTimer = null;
   }
 
-  // The user's own view of the queue, as the events would have told it.
+  // The snapshot replayed as events to one socket.
   private resync(userId: string): void {
-    const current = this.queue.currentTask;
-    if (
-      current &&
-      current.userId === userId &&
-      current.payload.step === 'session'
-    ) {
-      const { mode } = current.payload.request;
-      const remainingMs = this.queue.currentRemainingMs();
-      this.clients.notifySessionStart(userId, {
-        sessionId: current.id,
-        mode,
-        durationMs: remainingMs,
-        endsAt: Date.now() + remainingMs,
-      });
+    const turn = this.snapshot(userId);
+    if (!turn) return;
+    if (turn.step === 'waiting') {
+      this.clients.notifyQueue(userId, turn.place);
       return;
     }
-    const place = this.queue.places().find((item) => item.userId === userId);
-    if (!place) return;
-    const { waitMs, position } = place;
-    this.clients.notifyQueue(userId, { waitMs, position });
+    const { sessionId, request, remainingMs } = turn;
+    this.clients.notifySessionStart(userId, {
+      sessionId,
+      mode: request.mode,
+      durationMs: remainingMs,
+      endsAt: Date.now() + remainingMs,
+    });
   }
 
   private startFade(task: Task): void {

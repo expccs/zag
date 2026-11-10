@@ -1,6 +1,7 @@
 import type {
   SessionErrorCode,
   SessionRequest,
+  SessionSnapshot,
   SessionTicket,
   TouchEvent,
 } from '@zag/protocol';
@@ -26,6 +27,8 @@ export interface SessionApi {
   request(userId: string, request: SessionRequest): SessionTicket;
   /** Drops the user's place; `true` when there was one. */
   cancel(userId: string): boolean;
+  /** The user's turn for a phone that reloaded; `null` when none. */
+  snapshot(userId: string): SessionSnapshot | null;
   /** `true` when the touch belongs to the running session's user. */
   handleTouch(userId: string, event: TouchEvent): boolean;
   /** The user has at least one live connection again: stop the grace timer. */

@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
+import { TurnRestorer } from './components/TurnRestorer';
 import { useIsPhone } from './hooks/use-is-phone';
 import { LanguageProvider } from './i18n/LanguageProvider';
 import { SocketProvider } from './socket/SocketProvider';
@@ -38,6 +39,7 @@ const Gate = () => {
   if (!isPhone) return <UnsupportedDeviceScreen />;
   return (
     <SocketProvider>
+      <TurnRestorer />
       <Suspense fallback={null}>{routes}</Suspense>
     </SocketProvider>
   );
