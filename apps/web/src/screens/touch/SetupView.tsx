@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate, useParams } from 'react-router';
 import { GlassButton } from '../../components/GlassButton';
 import { useLanguage } from '../../i18n/use-language';
 import {
+  MODES_PATH,
   SETUP_KIND,
   defaultSetup,
   isEnabledMode,
@@ -59,7 +60,7 @@ export const SetupView = () => {
   const [setup, setSetup] = useState<Setup>(() =>
     isEnabledMode(mode) ? defaultSetup(mode) : defaultSetup('comet'),
   );
-  if (!isEnabledMode(mode)) return <Navigate to="/touch" replace />;
+  if (!isEnabledMode(mode)) return <Navigate to={MODES_PATH} replace />;
   const failed = (location.state as { failed?: boolean } | null)?.failed;
 
   const start = () => {

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { useOrientation } from '../../../hooks/use-orientation';
 import { formatClock, useSecondsUntil } from '../../../hooks/use-seconds-until';
 import { useLanguage } from '../../../i18n/use-language';
+import { MODES_PATH } from '../../../interactive/modes';
 import type { SessionPhase } from '../../../socket/session-store';
 import { useSession } from '../../../socket/use-session';
 import { CountdownView } from './CountdownView';
@@ -50,7 +51,7 @@ export const SessionView = () => {
   useEffect(() => {
     if (kind === 'idle' || ended === 'skipped') {
       session.reset();
-      navigate('/touch', { replace: true });
+      navigate(MODES_PATH, { replace: true });
     }
   }, [kind, ended, session, navigate]);
 
@@ -84,7 +85,7 @@ export const SessionView = () => {
 
   const leave = () => {
     session.cancel();
-    navigate('/touch', { replace: true });
+    navigate(MODES_PATH, { replace: true });
   };
 
   const { fade, drawing } = messages.touch;

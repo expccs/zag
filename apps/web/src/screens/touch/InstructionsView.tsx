@@ -2,7 +2,7 @@ import { Navigate, useParams } from 'react-router';
 import { GlassLink } from '../../components/GlassLink';
 import type { InstructionItem } from '../../i18n/messages';
 import { useLanguage } from '../../i18n/use-language';
-import { isEnabledMode } from '../../interactive/modes';
+import { isEnabledMode, MODES_PATH, SOLE_MODE } from '../../interactive/modes';
 import { TouchChrome } from './TouchChrome';
 import styles from './instructions.module.css';
 
@@ -22,12 +22,12 @@ const renderItem = (item: InstructionItem, index: number) => (
 export const InstructionsView = () => {
   const { mode } = useParams();
   const { messages, language } = useLanguage();
-  if (!isEnabledMode(mode)) return <Navigate to="/touch" replace />;
+  if (!isEnabledMode(mode)) return <Navigate to={MODES_PATH} replace />;
   const { title, cta, byMode } = messages.touch.instructions;
   const card = messages.touch.modes.cards.find((item) => item.mode === mode);
   const instruction = byMode[mode];
   return (
-    <TouchChrome back="/touch">
+    <TouchChrome back={SOLE_MODE ? '/mission' : '/touch'}>
       <div className={styles.instructions} data-lang={language}>
         <h1 className={styles.title}>{title}</h1>
         {card ? (

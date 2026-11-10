@@ -1,4 +1,5 @@
 import { useLanguage } from '../../../i18n/use-language';
+import { MODES_PATH } from '../../../interactive/modes';
 import { TouchChrome } from '../TouchChrome';
 import styles from './session.module.css';
 
@@ -7,7 +8,7 @@ export const FinalView = () => {
   const { messages } = useLanguage();
   const { title, body } = messages.touch.final;
   return (
-    <TouchChrome back="/touch" footer="solo">
+    <TouchChrome back={MODES_PATH} footer="solo">
       <div className={styles.final}>
         <h1 className={styles.finalTitle}>{title}</h1>
         <p className={styles.finalBody}>{body}</p>

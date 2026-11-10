@@ -62,6 +62,16 @@ export const DEFAULT_COLORS: CometColors = { head: '#FF4848', tail: '#FF9F3F' };
  */
 export const ENABLED_MODES: readonly InteractiveMode[] = ['comet'];
 
+/** The only enabled mode, if there is one: the modes screen is skipped. */
+export const SOLE_MODE: InteractiveMode | null =
+  ENABLED_MODES.length === 1 ? ENABLED_MODES[0] : null;
+
+/**
+ * Where «choose a mode» lives: the list, or, with a sole mode, straight
+ * to its instructions. Every «back to the modes» goes here.
+ */
+export const MODES_PATH = SOLE_MODE ? `/touch/${SOLE_MODE}` : '/touch';
+
 export const isMode = (value: unknown): value is InteractiveMode =>
   value === 'comet' || value === 'milky-way' || value === 'palette';
 

@@ -22,7 +22,13 @@ Handoff log between agent sessions. Newest entry on top. See the
   `docs/design/assets/logos`, verified against the Figma image hash); the
   old 254 / 164 px copies were blurry on 3× phones. Same files feed the
   footer, `TouchChrome` and `LandscapeBar`.
-- **Next step:** commit the test fix and the logos, re-run the CI `check`.
+  Also: with a single enabled mode the modes screen is skipped —
+  `SOLE_MODE` / `MODES_PATH` in `interactive/modes.ts`; `/touch` index
+  redirects to `/touch/<mode>` (`App.tsx`), the instructions' back arrow
+  goes to `/mission`, and `SessionView` / `FinalView` / mode guards return
+  to `MODES_PATH`. Verified in headless Chrome (scratchpad `sole-mode.mjs`).
+- **Next step:** commit the sole-mode skip (test fix and logos are in
+  `f6e12a2` / `63188bc`), re-run the CI `check`.
 
 ---
 

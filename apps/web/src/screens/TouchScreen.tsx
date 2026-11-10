@@ -41,7 +41,8 @@ const renderNotice = (view: Exclude<View, 'interactive'>) => {
  * disconnects on unmount, and re-renders on every `state:update` so a
  * change on the server (e.g. a tech pause) replaces the screen at once.
  * While the screen is `interactive` the nested routes (modes →
- * instructions → setup → session) render through the outlet; otherwise the
+ * instructions → setup → session; with a sole enabled mode `/touch`
+ * redirects to its instructions) render through the outlet; otherwise the
  * notice replaces them. The session store survives a notice (a short
  * connection loss keeps the place in the queue) and is forgotten only when
  * the user leaves Touch & Create.

@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 import { TurnRestorer } from './components/TurnRestorer';
 import { useIsPhone } from './hooks/use-is-phone';
 import { LanguageProvider } from './i18n/LanguageProvider';
+import { MODES_PATH, SOLE_MODE } from './interactive/modes';
 import { SocketProvider } from './socket/SocketProvider';
 import { HomeScreen } from './screens/HomeScreen';
 import { UnsupportedDeviceScreen } from './screens/UnsupportedDeviceScreen';
@@ -18,12 +19,20 @@ const InstructionsView = lazy(() => import('./screens/touch/InstructionsView'));
 const SetupView = lazy(() => import('./screens/touch/SetupView'));
 const SessionView = lazy(() => import('./screens/touch/session/SessionView'));
 
+// With a single enabled mode the list is pointless: `/touch` opens the
+// instructions of that mode and its back arrow returns to the mission.
+const modesIndex = SOLE_MODE ? (
+  <Navigate to={MODES_PATH} replace />
+) : (
+  <ModesView />
+);
+
 const routes = (
   <Routes>
     <Route path="/" element={<HomeScreen />} />
     <Route path="/mission" element={<MissionScreen />} />
     <Route path="/touch" element={<TouchScreen />}>
-      <Route index element={<ModesView />} />
+      <Route index element={modesIndex} />
       <Route path="session" element={<SessionView />} />
       <Route path=":mode" element={<InstructionsView />} />
       <Route path=":mode/setup" element={<SetupView />} />
