@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { BrandLink } from '../../../components/BrandLink';
 import styles from './landscape.module.css';
 
 export interface LandscapeBarProps {
@@ -7,27 +8,32 @@ export interface LandscapeBarProps {
   children?: ReactNode;
 }
 
-/** Top strip of the landscape screens: ZAG short, two brand logos, extras. */
+/**
+ * Top strip of the landscape screens: ZAG short, two brand logos, extras.
+ * Every logo links to its site (new tab, the session stays alive here).
+ */
 export const LandscapeBar = ({ layout, children }: LandscapeBarProps) => (
   <header className={`${styles.bar} ${styles[layout]}`}>
-    <img className={styles.zag} src="/zag-short.png" alt="ZAG" />
+    <BrandLink brand="zag" className={styles.zag}>
+      <img src="/zag-short.png" alt="ZAG" />
+    </BrandLink>
     {layout === 'countdown' ? (
       <>
-        <img className={styles.kabluka} src="/kabluka.png" alt="Kabluka" />
-        <img
-          className={styles.expolight}
-          src="/expolight.png"
-          alt="Expolight"
-        />
+        <BrandLink brand="kabluka" className={styles.kabluka}>
+          <img src="/kabluka.png" alt="Kabluka" />
+        </BrandLink>
+        <BrandLink brand="expolight" className={styles.expolight}>
+          <img src="/expolight.png" alt="Expolight" />
+        </BrandLink>
       </>
     ) : (
       <>
-        <img
-          className={styles.expolight}
-          src="/expolight.png"
-          alt="Expolight"
-        />
-        <img className={styles.kabluka} src="/kabluka.png" alt="Kabluka" />
+        <BrandLink brand="expolight" className={styles.expolight}>
+          <img src="/expolight.png" alt="Expolight" />
+        </BrandLink>
+        <BrandLink brand="kabluka" className={styles.kabluka}>
+          <img src="/kabluka.png" alt="Kabluka" />
+        </BrandLink>
       </>
     )}
     {children}

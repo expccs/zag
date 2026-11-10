@@ -83,6 +83,15 @@
   font-weight: 700;
 }
 
+/* Links in the copy (ours, not in Figma): same colour as the text, a
+   thin underline tells them apart. */
+.link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 0.0625rem;
+  text-underline-offset: 0.15em;
+}
+
 .paragraph {
   margin: 0;
 }

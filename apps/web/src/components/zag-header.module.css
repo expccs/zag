@@ -10,6 +10,10 @@
   margin-left: calc(50% - 50vw);
 }
 
+.link {
+  display: block;
+}
+
 .logo {
   display: block;
   width: 100%;

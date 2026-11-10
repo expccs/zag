@@ -7,15 +7,20 @@
   padding: 0 0 1.5625rem;
 }
 
-.footer img {
+.footer a {
   display: block;
-  height: auto;
 }
 
-.footer img:first-child {
+.footer a:first-child {
   width: 8.625rem;
 }
 
-.footer img:last-child {
+.footer a:last-child {
   width: 5.5rem;
+}
+
+.footer img {
+  display: block;
+  width: 100%;
+  height: auto;
 }

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { BackLink } from '../../components/BackLink';
 import { BrandFooter } from '../../components/BrandFooter';
+import { BrandLink } from '../../components/BrandLink';
 import { LangSwitch } from '../../components/LangSwitch';
 import { ZagHeader } from '../../components/ZagHeader';
 import styles from './touch-chrome.module.css';
@@ -38,7 +39,9 @@ export const TouchChrome = ({
         <BrandFooter />
       ) : (
         <footer className={styles.footerSolo}>
-          <img src="/expolight.png" width={138} height={38} alt="Expolight" />
+          <BrandLink brand="expolight">
+            <img src="/expolight.png" width={138} height={38} alt="Expolight" />
+          </BrandLink>
         </footer>
       )}
     </div>

@@ -6,9 +6,15 @@
  * `gap` blocks reproduce the empty lines of the Figma text layer.
  */
 import type { InteractiveMode } from '@zag/protocol';
+import type { Brand } from '../components/BrandLink';
 import type { Language } from './language-context';
 
-export type Inline = string | { bold: string };
+/**
+ * A run of body text: plain, bold, or a link to a brand site (`link` names
+ * the site, `BrandLink`; the design has no links, they are ours).
+ */
+export type Inline =
+  string | { bold: string } | { link: Brand; text: string; bold?: boolean };
 
 export type Block =
   | { type: 'paragraph'; content: Inline[] }
@@ -156,8 +162,9 @@ const uk: Messages = {
       {
         type: 'paragraph',
         content: [
-          'Назва розшифровується як Zenyk Art Gallery і має глибоке ',
-          'символічне значення. Галерея започаткована засновником ',
+          'Назва розшифровується як ',
+          { link: 'zag', text: 'Zenyk Art Gallery' },
+          ' і має глибоке символічне значення. Галерея започаткована засновником ',
           { bold: '«Благодійного фонду Козицького»' },
           ' Козицьким Зіновієм Ярославовичем та мистецького виставкового ',
           'проєкту «Ми і світ», що з початку повномасштабного вторгнення ',
@@ -170,15 +177,15 @@ const uk: Messages = {
       {
         type: 'paragraph',
         content: [
-          'ZENYK ART GALLERY названа та присвячена світлій памʼяті його ',
-          'онука – Зеника Козицького Молодшого.',
+          { link: 'zag', text: 'ZENYK ART GALLERY' },
+          ' названа та присвячена світлій памʼяті його онука – Зеника Козицького Молодшого.',
         ],
       },
       { type: 'gap', lines: 2 },
       {
         type: 'paragraph',
         content: [
-          { bold: 'ZENYK ART GALLERY' },
+          { link: 'zag', text: 'ZENYK ART GALLERY', bold: true },
           ' – це перший в Україні безбар’єрний мистецький простір, ',
           'створений за міжнародними стандартами доступності.',
         ],
@@ -197,7 +204,11 @@ const uk: Messages = {
       { type: 'gap', lines: 1 },
       {
         type: 'paragraph',
-        content: [{ bold: 'ZENYK ART GALLERY поєднуватиме' }, ':'],
+        content: [
+          { link: 'zag', text: 'ZENYK ART GALLERY', bold: true },
+          { bold: ' поєднуватиме' },
+          ':',
+        ],
       },
       {
         type: 'list',
@@ -431,8 +442,9 @@ const en: Messages = {
       {
         type: 'paragraph',
         content: [
-          'The name stands for Zenyk Art Gallery and holds a deep symbolic ',
-          'meaning. The gallery was founded by ',
+          'The name stands for ',
+          { link: 'zag', text: 'Zenyk Art Gallery' },
+          ' and holds a deep symbolic meaning. The gallery was founded by ',
           { bold: 'Zinoviy Yaroslavovych Kozytskyi' },
           ', founder of the "Kozytskyi Charity Foundation" and the "We and ',
           'World" art exhibition project, which has been promoting Ukrainian ',
@@ -444,7 +456,7 @@ const en: Messages = {
       {
         type: 'paragraph',
         content: [
-          { bold: 'ZENYK ART GALLERY' },
+          { link: 'zag', text: 'ZENYK ART GALLERY', bold: true },
           ' is named after and dedicated to the bright memory of his ',
           'grandson, Zenyk Kozytskyi Jr.',
         ],
@@ -452,8 +464,8 @@ const en: Messages = {
       {
         type: 'paragraph',
         content: [
-          'ZENYK ART GALLERY is the first barrier-free art space in Ukraine, ',
-          'created according to international accessibility standards.',
+          { link: 'zag', text: 'ZENYK ART GALLERY' },
+          ' is the first barrier-free art space in Ukraine, created according to international accessibility standards.',
         ],
       },
       { type: 'paragraph', content: ['Important initiatives:'] },
@@ -469,7 +481,10 @@ const en: Messages = {
       },
       {
         type: 'paragraph',
-        content: [{ bold: 'ZENYK ART GALLERY will feature:' }],
+        content: [
+          { link: 'zag', text: 'ZENYK ART GALLERY', bold: true },
+          { bold: ' will feature:' },
+        ],
       },
       {
         type: 'list',

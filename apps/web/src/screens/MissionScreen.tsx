@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { BackLink } from '../components/BackLink';
 import { BrandFooter } from '../components/BrandFooter';
+import { BrandLink } from '../components/BrandLink';
 import { GlassLink } from '../components/GlassLink';
 import { LangSwitch } from '../components/LangSwitch';
 import { ZagHeader } from '../components/ZagHeader';
@@ -8,8 +9,17 @@ import { MISSION_HERO, type Block, type Inline } from '../i18n/messages';
 import { useLanguage } from '../i18n/use-language';
 import styles from './mission-screen.module.css';
 
-const renderInline = (part: Inline, index: number) =>
-  typeof part === 'string' ? part : <b key={index}>{part.bold}</b>;
+const renderInline = (part: Inline, index: number) => {
+  if (typeof part === 'string') return part;
+  if ('link' in part) {
+    return (
+      <BrandLink key={index} brand={part.link} className={styles.link}>
+        {part.bold ? <b>{part.text}</b> : part.text}
+      </BrandLink>
+    );
+  }
+  return <b key={index}>{part.bold}</b>;
+};
 
 const renderBlock = (block: Block, index: number) => {
   if (block.type === 'gap') {

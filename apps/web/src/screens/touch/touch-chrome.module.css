@@ -53,8 +53,13 @@
   padding: 0 0 1.5rem;
 }
 
-.footerSolo img {
+.footerSolo a {
   display: block;
   width: 7.9375rem;
+}
+
+.footerSolo img {
+  display: block;
+  width: 100%;
   height: auto;
 }

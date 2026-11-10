@@ -35,9 +35,19 @@ Handoff log between agent sessions. Newest entry on top. See the
   cyrillic/latin woff2 subsets from the bundle. Checked with `vite
   preview` + headless Chrome (scratchpad `preload-check.mjs`): all
   requests leave at ~10 ms, no «preloaded but not used» warning.
-- **Next step:** commit the sole-mode skip and the http2/preload change
-  (test fix and logos are in `f6e12a2` / `63188bc`), re-run the CI
-  `check`; apply `http2 on;` on the host nginx (`nginx -t && reload`).
+  Also (uncommitted): every logo is a link — `components/BrandLink.tsx`
+  (`BRAND_URLS`: ZAG → zag.com.ua, Expolight → expolight.net/uk,
+  Kabluka → kabluka.art; `target="_blank"` so the session stays alive)
+  wraps the images in `ZagHeader`, `BrandFooter`, the solo footer of
+  `TouchChrome` and `LandscapeBar`; the CSS sizes moved from `img` to the
+  `a` (image fills it). Boxes unchanged in headless Chrome (scratchpad
+  `logo-links.mjs`). In the Mission copy every «Zenyk Art Gallery» is a
+  link too: `Inline` gained `{ link: Brand; text; bold? }`
+  (`i18n/messages.ts`), rendered by `MissionScreen` through `BrandLink`
+  with `.link` (inherited colour, thin underline; not in Figma).
+- **Next step:** commit the logo links, re-run the CI `check` (sole-mode
+  skip and http2/preload are in `459572e` / `062996e`); apply `http2
+  on;` on the host nginx (`nginx -t && reload`).
 
 ---
 

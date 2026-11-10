@@ -42,9 +42,15 @@
   background: var(--color-black);
 }
 
-.bar img {
+/* Each logo is a link (`BrandLink`) positioned below; the image fills it. */
+.bar a {
   position: absolute;
   display: block;
+}
+
+.bar img {
+  display: block;
+  width: 100%;
   height: auto;
 }
 
