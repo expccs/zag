@@ -210,6 +210,7 @@ services:
 `/etc/nginx/sites-available/zag` (внутри `server { … }`):
 
 ```nginx
+http2 on;                             # nginx ≥ 1.25.1; старее — `listen 443 ssl http2;`
 root /srv/zag/ui;                     # симлинк на /srv/zag/releases/<sha>, ставит CI
 # без open_file_cache: он держит fd старого релиза до 60 с после переключения симлинка
 gzip on;
@@ -234,6 +235,15 @@ location /socket.io/ {
 location = /health   { proxy_pass http://127.0.0.1:8090; }
 location /session/   { proxy_pass http://127.0.0.1:8090; }  # восстановление хода после перезагрузки
 ```
+
+HTTP/2 server push не используется: nginx 1.25.1 убрал `http2_push`, а
+Chrome 106+ и Firefox 132+ игнорируют push-потоки. Вместо него
+`index.html` несёт `<link rel="preload">`: фон главной `bg-home.jpg`
+прописан в `apps/web/index.html`, а четыре шрифтовых сабсета (Unbounded и
+Montserrat, cyrillic + latin; имена хэшированы) добавляет плагин
+`preloadFonts` в `vite.config.ts` на сборке. Браузер запрашивает их
+вместе с CSS и JS по одному HTTP/2-соединению, не дожидаясь разбора
+стилей.
 
 Релизы UI лежат в `/srv/zag/releases/<sha>/`, `/srv/zag/ui` — симлинк
 на текущий. Переключение симлинка атомарно, откат = переставить симлинк.

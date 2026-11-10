@@ -1,14 +1,56 @@
 import { fileURLToPath } from 'node:url';
-import { defineConfig } from 'vite';
+import { defineConfig, type HtmlTagDescriptor, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const rootDir = fileURLToPath(new URL('../..', import.meta.url));
 
+/**
+ * The font subsets every first paint needs: Unbounded and Montserrat in
+ * Cyrillic (UA copy) and Latin (ENG copy, «UA»/«ENG» pill). Without the
+ * preload the browser learns about them only after the CSS is parsed and
+ * the text laid out, one round trip later. The other subsets (latin-ext,
+ * cyrillic-ext, vietnamese) still load on demand through `unicode-range`.
+ */
+const PRELOADED_FONTS =
+  /^assets\/(unbounded|montserrat)-(cyrillic|latin)-wght-normal-[\w-]+\.woff2$/;
+
+const preloadFonts = (): Plugin => {
+  let base = '/';
+  return {
+    name: 'zag:preload-fonts',
+    apply: 'build',
+    configResolved(config) {
+      base = config.base;
+    },
+    transformIndexHtml: {
+      order: 'post',
+      handler(_html, { bundle }): HtmlTagDescriptor[] {
+        if (!bundle) return [];
+        return Object.keys(bundle)
+          .filter((fileName) => PRELOADED_FONTS.test(fileName))
+          .sort()
+          .map((fileName) => ({
+            tag: 'link',
+            attrs: {
+              rel: 'preload',
+              as: 'font',
+              type: 'font/woff2',
+              crossorigin: true,
+              href: `${base}${fileName}`,
+            },
+            injectTo: 'head',
+          }));
+      },
+    },
+  };
+};
+
 export default defineConfig({
   envDir: rootDir,
   plugins: [
     react(),
+    preloadFonts(),
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {

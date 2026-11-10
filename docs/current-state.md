@@ -27,8 +27,17 @@ Handoff log between agent sessions. Newest entry on top. See the
   redirects to `/touch/<mode>` (`App.tsx`), the instructions' back arrow
   goes to `/mission`, and `SessionView` / `FinalView` / mode guards return
   to `MODES_PATH`. Verified in headless Chrome (scratchpad `sole-mode.mjs`).
-- **Next step:** commit the sole-mode skip (test fix and logos are in
-  `f6e12a2` / `63188bc`), re-run the CI `check`.
+  Also: `http2 on;` in `deploy/nginx/zag.conf` (comment covers the
+  pre-1.25.1 syntax); no server push (removed from nginx, ignored by
+  Chrome/Firefox). Preloads instead: `<link rel="preload" as="image">`
+  for `bg-home.jpg` in `apps/web/index.html`, and the `preloadFonts`
+  plugin in `vite.config.ts` injects `as="font"` preloads for the four
+  cyrillic/latin woff2 subsets from the bundle. Checked with `vite
+  preview` + headless Chrome (scratchpad `preload-check.mjs`): all
+  requests leave at ~10 ms, no «preloaded but not used» warning.
+- **Next step:** commit the sole-mode skip and the http2/preload change
+  (test fix and logos are in `f6e12a2` / `63188bc`), re-run the CI
+  `check`; apply `http2 on;` on the host nginx (`nginx -t && reload`).
 
 ---
 

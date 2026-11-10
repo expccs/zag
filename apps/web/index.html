@@ -16,6 +16,11 @@
     />
     <link rel="icon" href="/favicon.png" sizes="64x64" type="image/png" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <!-- Home background (the LCP of `/`): a CSS url() is found only after
+         the stylesheet is parsed, so ask for it with the HTML. The fonts
+         are preloaded by the build (vite.config.ts), their names are
+         hashed. -->
+    <link rel="preload" as="image" href="/bg-home.jpg" />
     <title>ZAG — Створюй світлом</title>
   </head>
   <body>
