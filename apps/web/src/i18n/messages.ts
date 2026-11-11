@@ -265,7 +265,8 @@ const uk: Messages = {
       title: 'Ви поза зоною',
       body:
         'Інтерактив доступний лише біля фасаду галереї ZAG. Підійдіть ' +
-        'ближче до будівлі.',
+        'ближче до будівлі. Якщо ви вже поруч, доступ може бути ' +
+        'обмежено через повітряну тривогу — краще пройдіть в укриття.',
     },
     geoUnknown: {
       title: 'Місце не визначено',
@@ -560,7 +561,9 @@ const en: Messages = {
       title: 'You are out of range',
       body:
         'The interactive is available only next to the ZAG gallery ' +
-        'facade. Please move closer to the building.',
+        'facade. Please move closer to the building. If you are already ' +
+        'nearby, access may be limited because of an air raid alert — ' +
+        'please proceed to a shelter.',
     },
     geoUnknown: {
       title: 'Location unknown',

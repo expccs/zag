@@ -5,6 +5,18 @@ Handoff log between agent sessions. Newest entry on top. See the
 
 ---
 
+- **Timestamp:** 2026-11-11T07:10:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:** `touch.geoFar` copy (UA / EN) in
+  `apps/web/src/i18n/messages.ts` now adds that the block may also be
+  due to an air raid alert and advises going to a shelter. Rendered in
+  headless Chrome at 393 × 852: four / five lines, no overlap with the
+  drawing. Uncommitted.
+- **Next step:** commit together with the geo work below; the geo notice
+  copy is ours, confirm it with the designer / gallery.
+
+---
+
 - **Timestamp:** 2026-11-11T06:30:00Z
 - **Agent / model:** Claude Fable 5.1
 - **What changed:** Location restriction end to end (uncommitted).
