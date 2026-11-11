@@ -56,10 +56,19 @@ export interface GeoSample {
   accuracy?: number;
 }
 
-export type GeoReason = 'ok' | 'too-far' | 'no-center' | 'invalid' | 'disabled';
+/**
+ * Verdict of the geo-fence (shared-modules.md § 1.3). `disabled`: the
+ * `locationRestriction` flag is off, every position passes. `missing`:
+ * the phone sent no `geo:check` within `GEO_SAMPLE_TIMEOUT_MS` of its
+ * connection while the restriction is on; pushed by the server as
+ * `geo:update`, cleared by the next sample.
+ */
+export type GeoReason =
+  'ok' | 'too-far' | 'no-center' | 'invalid' | 'disabled' | 'missing';
 
 export interface GeoCheckResult {
   allowed: boolean;
+  /** Metres to the facade; `-1` when unknown. */
   distanceM: number;
   reason: GeoReason;
 }
@@ -69,8 +78,12 @@ export interface SessionRequest {
   params: Record<string, string | number>;
 }
 
+/**
+ * `ELOCATION`: the restriction is on and the phone has not passed a
+ * `geo:check` on this connection (or its last one failed).
+ */
 export type SessionErrorCode =
-  'ENOTALLOWED' | 'EBADMODE' | 'EQUEUED' | 'EINTERNAL';
+  'ENOTALLOWED' | 'ELOCATION' | 'EBADMODE' | 'EQUEUED' | 'EINTERNAL';
 
 /**
  * Place in the queue. `position: 0` means the user's turn is on: the
@@ -162,6 +175,7 @@ export const EVENTS = {
   stateUpdate: 'state:update',
   stateGet: 'state:get',
   geoCheck: 'geo:check',
+  geoUpdate: 'geo:update',
   sessionRequest: 'session:request',
   sessionCancel: 'session:cancel',
   queueUpdate: 'queue:update',
@@ -173,6 +187,8 @@ export const EVENTS = {
 /** Events emitted by the server, received by the client. */
 export interface ServerToClientEvents {
   'state:update': (state: PublicState) => void;
+  /** The server's verdict changed without a sample: timeout, flag flip. */
+  'geo:update': (result: GeoCheckResult) => void;
   'queue:update': (place: QueuePlace) => void;
   'session:start': (info: SessionInfo) => void;
   'session:end': (end: SessionEnd) => void;

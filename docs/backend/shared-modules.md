@@ -172,8 +172,9 @@ CCS ──socket.io──▶ CloudClient ──stateChange──▶ AppState ─
 | ----------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | S→C при подключении и при изменении | `state:update`    | `PublicState`                                                                                  | —                                                                                                                                                                               |
 | C→S                                 | `state:get`       | —                                                                                              | `PublicState`                                                                                                                                                                   |
-| C→S                                 | `geo:check`       | `{ latitude, longitude, accuracy? }`                                                           | `{ allowed, distanceM, reason }`; `reason`: `ok` / `too-far` / `no-center` / `invalid` / `disabled`                                                                             |
-| C→S                                 | `session:request` | `{ mode: 'comet' \| 'milky-way' \| 'palette', params }`                                        | `{ success: true, sessionId, waitMs, position, durationMs }` или `{ success: false, code }`; `code`: `ENOTALLOWED` (экран не `interactive`), `EBADMODE`, `EQUEUED`, `EINTERNAL` |
+| C→S                                 | `geo:check`       | `{ latitude, longitude, accuracy? }`                                                           | `{ allowed, distanceM, reason }`; `reason`: `ok` / `too-far` / `no-center` / `invalid` / `disabled` (флаг выключен — всё разрешено)                                              |
+| S→C                                 | `geo:update`      | `{ allowed, distanceM, reason }`                                                               | — ; вердикт без запроса: `missing` — телефон не прислал `geo:check` за `GEO_SAMPLE_TIMEOUT_MS` после подключения (или после включения флага)                                   |
+| C→S                                 | `session:request` | `{ mode: 'comet' \| 'milky-way' \| 'palette', params }`                                        | `{ success: true, sessionId, waitMs, position, durationMs }` или `{ success: false, code }`; `code`: `ENOTALLOWED` (экран не `interactive`), `ELOCATION` (флаг `locationRestriction` включён, а последняя проверка позиции не пройдена или её не было), `EBADMODE`, `EQUEUED`, `EINTERNAL` |
 | C→S                                 | `session:cancel`  | —                                                                                              | `{ success: true, removed }`                                                                                                                                                    |
 | S→C                                 | `queue:update`    | `{ waitMs, position }`                                                                         | —                                                                                                                                                                               |
 | S→C                                 | `session:start`   | `{ sessionId, mode, durationMs, endsAt }`                                                      | —                                                                                                                                                                               |
@@ -197,6 +198,15 @@ CCS ──socket.io──▶ CloudClient ──stateChange──▶ AppState ─
   только на шаге `session` (во время fade — отбрасывается), остальные молча
   отбрасываются. Серверного превью нет: TD получает поток,
   клиент рисует локально.
+- Геозона (`GeoService`): пока флаг `locationRestriction` включён, сервер
+  помнит вердикт последнего `geo:check` каждого подключённого
+  пользователя и пускает в очередь только с `allowed: true`; вердикт
+  забывается вместе с последним сокетом пользователя, поэтому клиент
+  после реконнекта шлёт последнюю позицию ещё раз. Уже стоящего в очереди
+  GPS-дрожание не выбрасывает: `EQUEUED` проверяется раньше `ELOCATION`.
+  При выключенном флаге проверка не делается (`reason: 'disabled'`,
+  всегда `allowed: true`); при включении флага таймеры запускаются для
+  всех подключённых заново.
 - Сервер — источник времени. `queue:update` со своим `waitMs` /
   `position` получает каждый ждущий при любом изменении очереди (кто-то
   вышел, задача завершилась), плюс **каждые `QUEUE_SYNC_MS` (5 с)** все
@@ -288,12 +298,20 @@ end», `drain` → «Idle» (`COMMAND`, без params). Порядок на од
   ни индикатора связи на них нет. При уходе с «Touch & Create» назад на
   Home / Mission соединение закрывается (`socket.disconnect()`), чтобы
   читатели лендинга не держали сокеты и не занимали очередь.
-- Геолокация: `navigator.geolocation.watchPosition(…, { enableHighAccuracy:
-true })` запускается только когда `flags.locationRestriction === true`;
-  каждая позиция уходит в `geo:check` с ack; `clearWatch` при размонтировании
-  и при выключении флага. Ошибка с `code === 1` (запрет) → экран «вне зоны»
-  с подсказкой включить геолокацию. Не опрашивать `getCurrentPosition`
-  по таймеру.
+- Геолокация (`socket/geo-store.ts`, `screens/TouchScreen.tsx`):
+  `navigator.geolocation.watchPosition(…, { enableHighAccuracy: true })`
+  запускается только когда `flags.locationRestriction === true` — при
+  выключенном флаге браузер даже не спрашивает разрешение; каждая
+  позиция уходит в `geo:check` с ack, при реконнекте последняя позиция
+  отправляется повторно; `clearWatch` при уходе с «Touch & Create» и при
+  выключении флага. Не опрашивать `getCurrentPosition` по таймеру.
+  Экраны (`GeoNoticeView`, макет «Зв'язок втрачено», тексты наши):
+  `denied` (ошибка `code === 1`) → «Увімкніть геолокацію»; `too-far` /
+  `no-center` / `invalid` → «Ви поза зоною»; нет API, нет фикса
+  (`code` 2/3) или `geo:update { reason: 'missing' }` с сервера → «Місце
+  не визначено». Локальная ошибка (запрет, нет фикса) важнее серверного
+  `missing`. Уведомление заменяет поток интерактива, только пока ход не
+  идёт (`queued` / `fade` / `active` не прерываются).
 - Касания (`screens/touch/session/use-touch-stream.ts`): Pointer Events на
   области фасада, нормализация в [0, 1] относительно неё с нулём в левом
   нижнем углу (`y = 1 − clientY/height`, как UV в TouchDesigner), `touch: 1` на
@@ -372,6 +390,7 @@ Socket.IO + `/health`), он не раздаёт статику.
 | `GEO_RADIUS_M`                                                                                                  | радиус зоны                                                                   | `100`                                                                   |
 | `GEO_ACCURACY_TOLERANCE_M`                                                                                      | максимум допуска по точности GPS                                              | `30`                                                                    |
 | `GEO_CENTER`                                                                                                    | `lat,lng`; переопределяет координаты из CCS                                   | из логина CCS                                                           |
+| `GEO_SAMPLE_TIMEOUT_MS`                                                                                         | сколько ждать первый `geo:check` после подключения, затем `geo:update` `missing` | `5000`                                                                  |
 | `TD_WS_URL`                                                                                                     | адрес WebSocket-сервера TouchDesigner; переподключение каждые 5 с бесконечно  | `ws://10.11.68.104:82` (`TD_DEFAULT_URL`); в `offline` — отключён       |
 | `TD_PING_INTERVAL_MS`                                                                                           | интервал ping                                                                 | `30000`                                                                 |
 | `SESSION_MS`                                                                                                    | длительность сеанса                                                           | `40000`                                                                 |

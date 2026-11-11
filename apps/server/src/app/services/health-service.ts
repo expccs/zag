@@ -1,6 +1,7 @@
 import type { PublicState } from '@zag/protocol';
 import { inject, injectable } from 'tsyringe';
 import { ZagAppState } from '../domain/app-state';
+import { GeoService, type GeoSummary } from './geo-service';
 import { SessionService, type SessionSummary } from './session-service';
 import { APP_INFO, type AppInfo } from '../ports/app-info';
 import { CLIENT_GATEWAY, type ClientGateway } from '../ports/client-gateway';
@@ -27,6 +28,7 @@ export interface HealthReport {
   ccs: CloudHealth;
   state: PublicState;
   sessions: SessionSummary;
+  geo: GeoSummary;
   facade: FacadeHealth;
 }
 
@@ -41,6 +43,7 @@ export class HealthService {
     @inject(CLIENT_GATEWAY) private readonly clients: ClientGateway,
     @inject(ZagAppState) private readonly state: ZagAppState,
     @inject(SessionService) private readonly sessions: SessionService,
+    @inject(GeoService) private readonly geo: GeoService,
     @inject(FACADE_GATEWAY) private readonly facade: FacadeGateway,
   ) {}
 
@@ -58,6 +61,7 @@ export class HealthService {
       },
       state: this.state.publicState,
       sessions: this.sessions.summary,
+      geo: this.geo.summary,
       facade: {
         connected: this.facade.isConnected,
         dropped: this.facade.droppedCount,

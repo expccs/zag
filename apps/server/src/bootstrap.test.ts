@@ -5,6 +5,7 @@ import { after, before, describe, it } from 'node:test';
 import { io as connect, type Socket } from 'socket.io-client';
 import { WebSocketServer } from 'ws';
 import type {
+  GeoCheckResult,
   PublicState,
   QueuePlace,
   SessionEnd,
@@ -20,6 +21,7 @@ import {
   HealthService,
   type HealthReport,
 } from './app/services/health-service';
+import { GeoService } from './app/services/geo-service';
 import { SessionService } from './app/services/session-service';
 import { StateSyncService } from './app/services/state-sync-service';
 import type { DependencyContainer } from 'tsyringe';
@@ -79,6 +81,10 @@ class FakeClients implements ClientGateway {
     this.notified.push(userId);
   }
 
+  notifyGeo(userId: string): void {
+    this.notified.push(userId);
+  }
+
   close(): void {
     this.closed = true;
   }
@@ -128,7 +134,11 @@ const ENV = {
   SESSION_MS: '400',
   FADE_MS: '30',
   DISCONNECT_GRACE_MS: '80',
+  GEO_SAMPLE_TIMEOUT_MS: '120',
+  // Offline the fake CCS logs in at (0, 0); the fence takes that centre.
 };
+const FACADE = { latitude: 0, longitude: 0 };
+const FAR_AWAY = { latitude: 0.01, longitude: 0 };
 
 describe('Application (composition root)', () => {
   const td = new FakeTouchDesigner();
@@ -176,6 +186,11 @@ describe('Application (composition root)', () => {
     assert.equal(body.state.synced, true);
     assert.equal(body.state.screen, 'interactive');
     assert.deepEqual(body.sessions, { active: null, waiting: 0 });
+    assert.deepEqual(body.geo, {
+      restricted: false,
+      hasCenter: true,
+      radiusM: 100,
+    });
     assert.deepEqual(body.facade, { connected: true, dropped: 0 });
   });
 
@@ -344,6 +359,85 @@ describe('Application (composition root)', () => {
           command.projectUID === 'offline-project',
       ),
     );
+  });
+});
+
+describe('Application (location restriction)', () => {
+  let config: ServerConfig;
+  let container: DependencyContainer;
+  let url = '';
+  const sockets: Socket[] = [];
+
+  before(async () => {
+    config = ConfigLoader.load({
+      ...ENV,
+      STATE_OVERRIDES: 'locationRestriction=true',
+    });
+    container = Application.createContainer(config, logger, 'test');
+    const httpServer = new Application(container).httpServer;
+    await new Promise<void>((resolve) => {
+      httpServer.listen(0, () => resolve());
+    });
+    container.resolve(StateSyncService).start();
+    await flush();
+    await flush();
+    const { port } = httpServer.address() as AddressInfo;
+    url = `http://127.0.0.1:${port}`;
+  });
+
+  after(() => {
+    for (const socket of sockets) socket.close();
+    container.resolve(StateSyncService).stop();
+    container.resolve(SessionService).stop();
+    container.resolve(GeoService).stop();
+    container.resolve(FACADE_GATEWAY).close();
+    container.resolve(CLIENT_GATEWAY).close();
+    container.resolve(HTTP_SERVER).close();
+  });
+
+  it('blocks a silent or distant phone, lets a close one in', async () => {
+    const silent = await connectClient(url, 'user-geo-silent-01');
+    const missing = once<GeoCheckResult>(silent, 'geo:update');
+    const close = await connectClient(url, 'user-geo-close-001');
+    sockets.push(silent, close);
+    const request = { mode: 'comet', params: {} };
+
+    // Nothing sent yet: the request is refused, not queued.
+    const early = (await close.emitWithAck(
+      'session:request',
+      request,
+    )) as SessionRequestResult;
+    assert.deepEqual(early, { success: false, code: 'ELOCATION' });
+
+    const far = (await close.emitWithAck(
+      'geo:check',
+      FAR_AWAY,
+    )) as GeoCheckResult;
+    assert.equal(far.reason, 'too-far');
+    assert.ok(far.distanceM > 1_000, `${far.distanceM}`);
+    const ok = (await close.emitWithAck('geo:check', {
+      ...FACADE,
+      accuracy: 15,
+    })) as GeoCheckResult;
+    assert.deepEqual(ok, { allowed: true, distanceM: 0, reason: 'ok' });
+    const ticket = (await close.emitWithAck(
+      'session:request',
+      request,
+    )) as SessionRequestResult;
+    assert.ok(ticket.success);
+
+    // The silent phone hears `missing` after GEO_SAMPLE_TIMEOUT_MS.
+    assert.deepEqual(await missing, {
+      allowed: false,
+      distanceM: -1,
+      reason: 'missing',
+    });
+    const refused = (await silent.emitWithAck(
+      'session:request',
+      request,
+    )) as SessionRequestResult;
+    assert.deepEqual(refused, { success: false, code: 'ELOCATION' });
+    assert.equal(container.resolve(GeoService).summary.restricted, true);
   });
 });
 

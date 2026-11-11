@@ -11,9 +11,12 @@ import { APP_INFO } from './app/ports/app-info';
 import { CLIENT_GATEWAY } from './app/ports/client-gateway';
 import { CLOUD_GATEWAY } from './app/ports/cloud-gateway';
 import { FACADE_GATEWAY } from './app/ports/facade-gateway';
+import { GEO_API } from './app/ports/geo-api';
+import { GEO_CONFIG } from './app/ports/geo-config';
 import { LOGGER, type Logger } from './app/ports/logger';
 import { SESSION_API } from './app/ports/session-api';
 import { SESSION_CONFIG } from './app/ports/session-config';
+import { GeoService } from './app/services/geo-service';
 import { HealthService } from './app/services/health-service';
 import { SessionService } from './app/services/session-service';
 import { StateSyncService } from './app/services/state-sync-service';
@@ -79,6 +82,7 @@ export class Application {
     this.logger.info('shutting down', { signal });
     container.resolve(StateSyncService).stop();
     container.resolve(SessionService).stop();
+    container.resolve(GeoService).stop();
     container.resolve(FACADE_GATEWAY).close();
     container.resolve(CLIENT_GATEWAY).close();
     this.httpServer.close(() => process.exit(0));
@@ -103,6 +107,7 @@ export class Application {
       useValue: { version, ccsMode: config.cloud.mode },
     });
     container.register(SESSION_CONFIG, { useValue: config.session });
+    container.register(GEO_CONFIG, { useValue: config.geo });
     container.register(CLOUD_GATEWAY, {
       useFactory: instanceCachingFactory(Application.provideCloud),
     });
@@ -121,6 +126,8 @@ export class Application {
     container.register(HealthService, { useClass: HealthService }, scoped);
     container.register(SessionService, { useClass: SessionService }, scoped);
     container.register(SESSION_API, { useToken: SessionService });
+    container.register(GeoService, { useClass: GeoService }, scoped);
+    container.register(GEO_API, { useToken: GeoService });
     container.register(
       StateSyncService,
       { useClass: StateSyncService },
@@ -204,6 +211,7 @@ export class Application {
       logger: container.resolve(LOGGER),
       state: () => state.publicState,
       sessions: () => container.resolve(SESSION_API),
+      geo: () => container.resolve(GEO_API),
     });
   }
 }

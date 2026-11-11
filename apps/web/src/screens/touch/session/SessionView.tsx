@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
+import type { SessionErrorCode } from '@zag/protocol';
 import { useOrientation } from '../../../hooks/use-orientation';
 import { formatClock, useSecondsUntil } from '../../../hooks/use-seconds-until';
 import { useLanguage } from '../../../i18n/use-language';
@@ -13,6 +14,8 @@ import { QueueView } from './QueueView';
 import { RotateView } from './RotateView';
 
 type OrientationLock = { lock?: (orientation: string) => Promise<void> };
+
+const SILENT_CODES: SessionErrorCode[] = ['ENOTALLOWED', 'ELOCATION'];
 
 /** When the pill countdown of the portrait prompt ends, per phase. */
 const targetOf = (phase: SessionPhase): number => {
@@ -56,7 +59,9 @@ export const SessionView = () => {
   }, [kind, ended, session, navigate]);
 
   // The phone is turned: ask for the turn. `EQUEUED` means the place
-  // survived a reload; anything else sends the user back to the setup.
+  // survived a reload; anything else sends the user back to the setup
+  // (`ENOTALLOWED` / `ELOCATION` need no message there: Touch & Create
+  // already shows the notice for the new state or the location).
   useEffect(() => {
     if (kind !== 'pending' || !landscape) return;
     const mode = phase.phase === 'pending' ? phase.request.mode : null;
@@ -65,7 +70,7 @@ export const SessionView = () => {
       session.reset();
       navigate(`/touch/${mode}/setup`, {
         replace: true,
-        state: { failed: result.code !== 'ENOTALLOWED' },
+        state: { failed: !SILENT_CODES.includes(result.code) },
       });
     });
   }, [kind, landscape, phase, session, navigate]);

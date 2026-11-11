@@ -5,6 +5,8 @@ import {
   EVENTS,
   isValidUserId,
   type ClientToServerEvents,
+  type GeoCheckResult,
+  type GeoSample,
   type PublicState,
   type QueuePlace,
   type ServerToClientEvents,
@@ -16,6 +18,7 @@ import {
   type TouchEvent,
 } from '@zag/protocol';
 import type { ClientGateway } from '../../app/ports/client-gateway';
+import type { GeoApi } from '../../app/ports/geo-api';
 import type { Logger } from '../../app/ports/logger';
 import { SessionError, type SessionApi } from '../../app/ports/session-api';
 import { QueueError } from '../../app/domain/session-queue';
@@ -50,13 +53,16 @@ export interface SocketServerOptions {
   state: () => PublicState;
   /** Resolved lazily: the session service itself notifies through us. */
   sessions: () => SessionApi;
+  /** Same: the geo service pushes `geo:update` through us. */
+  geo: () => GeoApi;
 }
 
 /**
  * `ClientGateway` adapter: Socket.IO over the shared http server. Keeps
  * the sockets of each `userId` so per-user events reach every tab, and
- * tells the session API when a user's last socket goes away or comes
- * back (the grace period itself lives in the app layer).
+ * tells the session and geo APIs when a user's last socket goes away or
+ * comes back (the grace period and the sample timer live in the app
+ * layer).
  */
 export class ZagSocketServer implements ClientGateway {
   readonly io: ZagServer;
@@ -65,6 +71,7 @@ export class ZagSocketServer implements ClientGateway {
   private readonly trustProxy: boolean;
   private readonly state: () => PublicState;
   private readonly sessions: () => SessionApi;
+  private readonly geo: () => GeoApi;
   private readonly socketsByUser = new Map<string, Set<ZagSocket>>();
 
   constructor(httpServer: HttpServer, options: SocketServerOptions) {
@@ -72,6 +79,7 @@ export class ZagSocketServer implements ClientGateway {
     this.trustProxy = options.trustProxy;
     this.state = options.state;
     this.sessions = options.sessions;
+    this.geo = options.geo;
     this.io = new Server(httpServer, {
       transports: ['websocket'],
       cors: { origin: options.allowedOrigins },
@@ -100,6 +108,10 @@ export class ZagSocketServer implements ClientGateway {
     this.emitToUser(userId, EVENTS.sessionEnd, end);
   }
 
+  notifyGeo(userId: string, result: GeoCheckResult): void {
+    this.emitToUser(userId, EVENTS.geoUpdate, result);
+  }
+
   close(): void {
     this.io.close();
   }
@@ -126,6 +138,17 @@ export class ZagSocketServer implements ClientGateway {
       ZagSocketServer.isUnit(event.y) &&
       ZagSocketServer.isBit(event.touch)
     );
+  }
+
+  /** Numbers only; the fence itself judges their range. */
+  static toGeoSample(value: unknown): GeoSample {
+    const body = (value ?? {}) as Record<string, unknown>;
+    const accuracy = Number(body.accuracy);
+    return {
+      latitude: Number(body.latitude),
+      longitude: Number(body.longitude),
+      accuracy: Number.isFinite(accuracy) ? accuracy : 0,
+    };
   }
 
   private static isUnit(value: unknown): value is number {
@@ -191,10 +214,14 @@ export class ZagSocketServer implements ClientGateway {
       ...info,
       clients: this.clientsCount,
     });
-    this.track(userId, socket);
+    const first = this.track(userId, socket);
+    if (first) this.geo().userConnected(userId);
     this.sessions().userConnected(userId);
     socket.emit(EVENTS.stateUpdate, this.state());
     socket.on(EVENTS.stateGet, (ack) => ack(this.state()));
+    socket.on(EVENTS.geoCheck, (sample, ack) => {
+      ack(this.geo().check(userId, ZagSocketServer.toGeoSample(sample)));
+    });
     socket.on(EVENTS.sessionRequest, (request, ack) => {
       ack(this.requestSession(userId, request));
     });
@@ -214,7 +241,9 @@ export class ZagSocketServer implements ClientGateway {
         durationMs: Date.now() - connectedAt,
       });
       const last = this.untrack(userId, socket);
-      if (last) this.sessions().userDisconnected(userId);
+      if (!last) return;
+      this.geo().userDisconnected(userId);
+      this.sessions().userDisconnected(userId);
     });
   }
 
@@ -235,13 +264,15 @@ export class ZagSocketServer implements ClientGateway {
     }
   }
 
-  private track(userId: string, socket: ZagSocket): void {
-    let sockets = this.socketsByUser.get(userId);
-    if (!sockets) {
-      sockets = new Set();
-      this.socketsByUser.set(userId, sockets);
+  /** Remembers the socket; `true` when it is the user's first one. */
+  private track(userId: string, socket: ZagSocket): boolean {
+    const sockets = this.socketsByUser.get(userId);
+    if (sockets) {
+      sockets.add(socket);
+      return false;
     }
-    sockets.add(socket);
+    this.socketsByUser.set(userId, new Set([socket]));
+    return true;
   }
 
   /** Forgets the socket; `true` when it was the user's last one. */

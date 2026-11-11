@@ -12,23 +12,27 @@ apps/server/src/
 ├── app/                         # ядро: домен, порты, use cases
 │   ├── domain/
 │   │   ├── app-state.ts         # AppState<F>, ZagAppState, resolveScreen
+│   │   ├── geo-fence.ts         # GeoFence: гаверсинус, радиус + допуск по accuracy, центр из логина CCS
 │   │   └── session-queue.ts     # SessionQueue<T>, QueueError: очередь ходов (fade → session)
 │   ├── ports/                   # интерфейс + его InjectionToken
 │   │   ├── cloud-gateway.ts     # CloudGateway / CLOUD_GATEWAY, типы программ, CloudEmitter
 │   │   ├── client-gateway.ts    # ClientGateway / CLIENT_GATEWAY: broadcast + notify* по userId
 │   │   ├── session-api.ts       # SessionApi / SESSION_API (driving port), SessionError
 │   │   ├── session-config.ts    # SessionConfig / SESSION_CONFIG: sessionMs, fadeMs, grace
+│   │   ├── geo-api.ts           # GeoApi / GEO_API (driving port): check, isAllowed, user(Dis)connected
+│   │   ├── geo-config.ts        # GeoConfig / GEO_CONFIG: radiusM, accuracyToleranceM, center, sampleTimeoutMs
 │   │   ├── facade-gateway.ts    # FacadeGateway / FACADE_GATEWAY: команды и поток в TouchDesigner
 │   │   ├── logger.ts            # Logger / LOGGER
 │   │   └── app-info.ts          # AppInfo / APP_INFO: version, ccsMode
 │   └── services/                # use cases, @injectable()
 │       ├── state-sync-service.ts # CCS ⇄ AppState ⇄ клиенты
-│       ├── session-service.ts   # очередь сеансов: request/cancel/touch, grace, abort
+│       ├── session-service.ts   # очередь сеансов: request/cancel/touch, grace, abort; ELOCATION через GeoApi
+│       ├── geo-service.ts       # геозона: вердикт на пользователя, таймер первого geo:check → geo:update missing
 │       └── health-service.ts    # отчёт /health (+ sessions)
 ├── infrastructure/              # адаптеры портов
 │   ├── ccs/                     # CloudClient, FakeCloudClient, CloudGatewayFactory, ccs-ids, CloudControls (кнопки = FacadeGateway)
 │   ├── facade/composite-facade.ts # CompositeFacade: команды в TD и CCS, поток — только в TD
-│   ├── socket/socket-server.ts  # ZagSocketServer implements ClientGateway; session:*, touch:event → SessionApi
+│   ├── socket/socket-server.ts  # ZagSocketServer implements ClientGateway; session:*, touch:event → SessionApi; geo:check → GeoApi
 │   ├── touch-designer/          # TouchDesignerClient (ws), OfflineFacade, FacadeGatewayFactory
 │   ├── http/http-api-server.ts  # HttpApiServer (/health, GET /session/:userId), HTTP_SERVER
 │   ├── logging/structured-logger.ts

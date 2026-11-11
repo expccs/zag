@@ -5,6 +5,42 @@ Handoff log between agent sessions. Newest entry on top. See the
 
 ---
 
+- **Timestamp:** 2026-11-11T06:30:00Z
+- **Agent / model:** Claude Fable 5.1
+- **What changed:** Location restriction end to end (uncommitted).
+  Protocol: `GeoReason` + `missing`, S→C `geo:update`, `SessionErrorCode`
+  + `ELOCATION`. Server: `app/domain/geo-fence.ts` (haversine, radius +
+  accuracy tolerance, centre from the CCS login — also one that happened
+  before the service existed), ports `geo-api.ts` / `geo-config.ts`,
+  `app/services/geo-service.ts` (verdict per connected user, timer
+  `GEO_SAMPLE_TIMEOUT_MS` = 5 s → `geo:update { reason: 'missing' }`,
+  verdicts dropped with the last socket and on a flag flip, flag off →
+  `disabled` / allowed), `SessionService.request` refuses `ELOCATION`
+  after the `EQUEUED` check, socket adapter routes `geo:check` and the
+  per-user `geo:update`, `/health` gets `geo`. Config: `GEO_*` incl.
+  `GEO_SAMPLE_TIMEOUT_MS`. Tests: 76 server tests (fence, service,
+  socket, e2e with `STATE_OVERRIDES=locationRestriction=true`).
+  Web: `socket/geo-store.ts` + `useGeo` (watchPosition only while the
+  flag is on, so no permission prompt otherwise; last fix re-sent on
+  reconnect; `geo:update` applied unless a local permission / fix error
+  is showing), `TouchScreen` starts/stops the watch on the flag and shows
+  `GeoNoticeView` («Увімкніть геолокацію» / «Ви поза зоною» / «Місце не
+  визначено», layout of «Зв'язок втрачено», copy ours) while no turn is
+  live; `SessionView` treats `ELOCATION` like `ENOTALLOWED`. Verified in
+  headless Chrome with CDP geolocation (scratchpad `geo-check.mjs`, own
+  server on 8081 + vite on 5174 with `VITE_SOCKET_URL`, the user's dev
+  processes on 8080 / 5173 were left alone): silent watch → `missing`
+  notice after ~5.4 s, denied → prompt to enable, Kyiv → out of range,
+  centre → instructions without reload, flag off → `watchPosition` never
+  called. Docs: shared-modules.md § 4 / § 6 / env, server-architecture
+  tree, `.env.example`.
+- **Next step:** commit; put `GEO_CENTER` (or rely on the CCS login
+  coordinates) and check the CCS `locationRestriction` switch on the
+  host; decide with the designer whether the geo notices need their own
+  Figma frames.
+
+---
+
 - **Timestamp:** 2026-11-10T09:20:00Z
 - **Agent / model:** Claude Fable 5.1
 - **What changed:** CI `check` on `0037fb3` failed in

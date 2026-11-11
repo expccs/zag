@@ -1,4 +1,5 @@
 import type {
+  GeoCheckResult,
   PublicState,
   QueuePlace,
   SessionEnd,
@@ -18,6 +19,8 @@ export interface ClientGateway {
   notifyQueue(userId: string, place: QueuePlace): void;
   notifySessionStart(userId: string, info: SessionInfo): void;
   notifySessionEnd(userId: string, end: SessionEnd): void;
+  /** A verdict the user did not ask for: sample timeout (`missing`). */
+  notifyGeo(userId: string, result: GeoCheckResult): void;
   close(): void;
 }
 

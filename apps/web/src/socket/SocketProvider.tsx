@@ -8,6 +8,7 @@ import {
 } from 'react';
 import { io } from 'socket.io-client';
 import { createConnectionStore } from './connection-store';
+import { createGeoStore } from './geo-store';
 import { createServerStateStore } from './server-state-store';
 import { fetchTurn } from './session-restore';
 import { createSessionStore } from './session-store';
@@ -38,7 +39,8 @@ const createConnection = (url: string) => {
   const session = createSessionStore(socket, {
     fetchTurn: () => fetchTurn(url, getUserId()),
   });
-  return { socket, connection, serverState, session };
+  const geoStore = createGeoStore(socket);
+  return { socket, connection, serverState, session, geoStore };
 };
 
 /**
@@ -52,8 +54,8 @@ export const SocketProvider = ({
   autoConnect = false,
   children,
 }: SocketProviderProps) => {
-  const [{ socket, connection, serverState, session }] = useState(() =>
-    createConnection(url),
+  const [{ socket, connection, serverState, session, geoStore }] = useState(
+    () => createConnection(url),
   );
   const { status, error } = useSyncExternalStore(
     connection.subscribe,
@@ -80,8 +82,17 @@ export const SocketProvider = ({
   }, [autoConnect, connect, disconnect]);
 
   const value = useMemo<SocketContextValue>(
-    () => ({ socket, status, error, state, session, connect, disconnect }),
-    [socket, status, error, state, session, connect, disconnect],
+    () => ({
+      socket,
+      status,
+      error,
+      state,
+      session,
+      geoStore,
+      connect,
+      disconnect,
+    }),
+    [socket, status, error, state, session, geoStore, connect, disconnect],
   );
 
   return (

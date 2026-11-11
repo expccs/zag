@@ -4,11 +4,14 @@ import type { AddressInfo } from 'node:net';
 import { io as connect, type Socket } from 'socket.io-client';
 import {
   AUTH_ERROR,
+  type GeoCheckResult,
+  type GeoSample,
   type PublicState,
   type SessionRequest,
   type SessionTicket,
   type TouchEvent,
 } from '@zag/protocol';
+import type { GeoApi } from '../../app/ports/geo-api';
 import type { LogFields } from '../../app/ports/logger';
 import { SessionError, type SessionApi } from '../../app/ports/session-api';
 import { HttpApiServer } from '../http/http-api-server';
@@ -75,6 +78,32 @@ class FakeSessionApi implements SessionApi {
   }
 }
 
+/** Records calls; a sample without a finite latitude is `too-far`. */
+class FakeGeoApi implements GeoApi {
+  readonly calls: string[] = [];
+  readonly samples: GeoSample[] = [];
+
+  check(userId: string, sample: GeoSample): GeoCheckResult {
+    this.calls.push(`geo:${userId}`);
+    this.samples.push(sample);
+    const allowed = Number.isFinite(sample.latitude);
+    return { allowed, distanceM: 7, reason: allowed ? 'ok' : 'too-far' };
+  }
+
+  isAllowed(userId: string): boolean {
+    this.calls.push(`geo-allowed:${userId}`);
+    return true;
+  }
+
+  userConnected(userId: string): void {
+    this.calls.push(`geo-connected:${userId}`);
+  }
+
+  userDisconnected(userId: string): void {
+    this.calls.push(`geo-disconnected:${userId}`);
+  }
+}
+
 const waitFor = <T>(
   check: () => T | undefined,
   timeoutMs = 2_000,
@@ -106,6 +135,11 @@ const connectClient = (url: string, auth: object): Promise<Socket> =>
     });
   });
 
+const once = <T>(socket: Socket, event: string): Promise<T> =>
+  new Promise((resolve) => {
+    socket.once(event, resolve);
+  });
+
 const closed = (socket: Socket): Promise<void> =>
   new Promise((resolve) => {
     socket.once('disconnect', () => resolve());
@@ -115,6 +149,7 @@ const closed = (socket: Socket): Promise<void> =>
 describe('socket server', () => {
   const records: LogRecord[] = [];
   const sessions = new FakeSessionApi();
+  const geo = new FakeGeoApi();
   let server: ZagSocketServer;
   let url = '';
 
@@ -133,6 +168,7 @@ describe('socket server', () => {
         ccs: { mode: 'offline', connected: false, projectUID: null },
         state: STATE,
         sessions: { active: null, waiting: 0 },
+        geo: { restricted: false, hasCenter: false, radiusM: 100 },
         facade: { connected: true, dropped: 0 },
       }),
     });
@@ -142,6 +178,7 @@ describe('socket server', () => {
       logger,
       state: () => STATE,
       sessions: () => sessions,
+      geo: () => geo,
     });
     await new Promise<void>((resolve) => {
       httpServer.listen(0, () => resolve());
@@ -265,6 +302,48 @@ describe('socket server', () => {
     await closed(socket);
     await waitFor(
       () => sessions.calls.includes(`disconnected:${user}`) || undefined,
+    );
+  });
+
+  it('routes geo:check to the geo API and pushes geo:update', async () => {
+    const user = 'user-geo-000000001';
+    const socket = await connectClient(url, { userId: user });
+    const ok = await socket.emitWithAck('geo:check', {
+      latitude: 49.84,
+      longitude: 24.03,
+      accuracy: '12',
+    });
+    assert.deepEqual(ok, { allowed: true, distanceM: 7, reason: 'ok' });
+    const far = await socket.emitWithAck('geo:check', { longitude: 24.03 });
+    assert.deepEqual(far, { allowed: false, distanceM: 7, reason: 'too-far' });
+    assert.deepEqual(geo.samples.at(-2), {
+      latitude: 49.84,
+      longitude: 24.03,
+      accuracy: 12,
+    });
+    assert.equal(geo.samples.at(-1)?.accuracy, 0);
+    assert.ok(Number.isNaN(geo.samples.at(-1)?.latitude));
+
+    const pushed = once<GeoCheckResult>(socket, 'geo:update');
+    const missing: GeoCheckResult = {
+      allowed: false,
+      distanceM: -1,
+      reason: 'missing',
+    };
+    server.notifyGeo(user, missing);
+    assert.deepEqual(await pushed, missing);
+    await closed(socket);
+    await waitFor(
+      () => geo.calls.includes(`geo-disconnected:${user}`) || undefined,
+    );
+    assert.deepEqual(
+      geo.calls.filter((call) => call.endsWith(user)),
+      [
+        `geo-connected:${user}`,
+        `geo:${user}`,
+        `geo:${user}`,
+        `geo-disconnected:${user}`,
+      ],
     );
   });
 

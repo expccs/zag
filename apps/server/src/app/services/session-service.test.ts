@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type {
+  GeoCheckResult,
   PublicState,
   QueuePlace,
   SessionEnd,
@@ -12,6 +13,7 @@ import type {
 import { StructuredLogger } from '../../infrastructure/logging/structured-logger';
 import { ZagAppState } from '../domain/app-state';
 import type { ClientGateway } from '../ports/client-gateway';
+import type { GeoApi } from '../ports/geo-api';
 import type {
   FacadeCommand,
   FacadeGateway,
@@ -53,8 +55,35 @@ class FakeClients implements ClientGateway {
     this.events.push(`${userId}:end:${end.reason}`);
   }
 
+  notifyGeo(userId: string, result: GeoCheckResult): void {
+    this.events.push(`${userId}:geo:${result.reason}`);
+  }
+
   close(): void {
     this.clientsCount = 0;
+  }
+}
+
+/** Allows everyone except the users listed in `blocked`. */
+class FakeGeo implements GeoApi {
+  readonly blocked = new Set<string>();
+  readonly calls: string[] = [];
+
+  check(userId: string): GeoCheckResult {
+    this.calls.push(`check:${userId}`);
+    return { allowed: true, distanceM: 0, reason: 'ok' };
+  }
+
+  isAllowed(userId: string): boolean {
+    return !this.blocked.has(userId);
+  }
+
+  userConnected(userId: string): void {
+    this.calls.push(`connected:${userId}`);
+  }
+
+  userDisconnected(userId: string): void {
+    this.calls.push(`disconnected:${userId}`);
   }
 }
 
@@ -113,8 +142,16 @@ const createService = (
   });
   const clients = new FakeClients();
   const facade = new FakeFacade();
-  const service = new SessionService(config, state, clients, facade, logger);
-  return { service, state, clients, facade };
+  const geo = new FakeGeo();
+  const service = new SessionService(
+    config,
+    state,
+    clients,
+    facade,
+    geo,
+    logger,
+  );
+  return { service, state, clients, facade, geo };
 };
 
 const COMET = { mode: 'comet' as const, params: { color: '#ff4848' } };
@@ -178,17 +215,22 @@ describe('SessionService', () => {
     service.stop();
   });
 
-  it('rejects by code: wrong screen, bad mode, already queued', () => {
+  it('rejects by code: wrong screen, bad mode, location, queued', () => {
     const paused = createService({ techPause: true });
     assert.throws(() => paused.service.request('u1', COMET), {
       code: 'ENOTALLOWED',
     });
-    const { service } = createService();
+    const { service, geo } = createService();
     assert.throws(
       () => service.request('u1', { mode: 'laser' as never, params: {} }),
       { code: 'EBADMODE' },
     );
+    geo.blocked.add('u1');
+    assert.throws(() => service.request('u1', COMET), { code: 'ELOCATION' });
+    geo.blocked.delete('u1');
     service.request('u1', COMET);
+    // A queued user keeps the place whatever the fence says now.
+    geo.blocked.add('u1');
     assert.throws(() => service.request('u1', COMET), { code: 'EQUEUED' });
     service.stop();
   });

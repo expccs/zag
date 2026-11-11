@@ -1,5 +1,7 @@
 import { ZAG_FLAGS, type ZagFlag } from '@zag/protocol';
 import type { InjectionToken } from 'tsyringe';
+import type { GeoCoordinates } from '../../app/ports/cloud-gateway';
+import type { GeoConfig } from '../../app/ports/geo-config';
 import type { SessionConfig } from '../../app/ports/session-config';
 import {
   CLOUD_MODES,
@@ -39,6 +41,8 @@ export interface ServerConfig {
   controls: ControlsConfig;
   /** Queue timing (`SESSION_MS`, `FADE_MS`, grace, `QUEUE_SYNC_MS`). */
   session: SessionConfig;
+  /** Geo-fence (`GEO_RADIUS_M`, `GEO_CENTER`, `GEO_SAMPLE_TIMEOUT_MS`). */
+  geo: GeoConfig;
   /** TouchDesigner (`TD_WS_URL`, `TD_PING_INTERVAL_MS`). */
   facade: FacadeConfig;
 }
@@ -140,6 +144,7 @@ export class ConfigLoader {
       state: ConfigLoader.readState(reader, cloud.mode),
       controls: ConfigLoader.readControls(reader, cloud.mode),
       session: ConfigLoader.readSession(reader),
+      geo: ConfigLoader.readGeo(reader),
       facade: ConfigLoader.readFacade(reader, cloud.mode),
     };
   }
@@ -151,6 +156,30 @@ export class ConfigLoader {
       disconnectGraceMs: reader.number('DISCONNECT_GRACE_MS', 10_000),
       syncMs: reader.number('QUEUE_SYNC_MS', 5_000),
     };
+  }
+
+  private static readGeo(reader: EnvReader): GeoConfig {
+    return {
+      radiusM: reader.number('GEO_RADIUS_M', 100),
+      accuracyToleranceM: reader.number('GEO_ACCURACY_TOLERANCE_M', 30),
+      center: ConfigLoader.readCenter(reader.string('GEO_CENTER', '')),
+      sampleTimeoutMs: reader.number('GEO_SAMPLE_TIMEOUT_MS', 5_000),
+    };
+  }
+
+  // `GEO_CENTER=lat,lng`; empty keeps the coordinates of the CCS login.
+  private static readCenter(raw: string): GeoCoordinates | null {
+    if (!raw) return null;
+    const parts = raw.split(',').map((part) => Number(part.trim()));
+    const [latitude, longitude] = parts;
+    const valid =
+      parts.length === 2 &&
+      latitude !== undefined &&
+      longitude !== undefined &&
+      Math.abs(latitude) <= 90 &&
+      Math.abs(longitude) <= 180;
+    if (!valid) throw new ConfigError('GEO_CENTER must be "lat,lng"');
+    return { latitude, longitude };
   }
 
   // Online the facade LAN address is a project constant (like the CCS ids);

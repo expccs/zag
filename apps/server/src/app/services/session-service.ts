@@ -16,6 +16,7 @@ import {
   type FacadeGateway,
   type StrokePhase,
 } from '../ports/facade-gateway';
+import { GEO_API, type GeoApi } from '../ports/geo-api';
 import { LOGGER, type Logger } from '../ports/logger';
 import { SessionError, type SessionApi } from '../ports/session-api';
 import { SESSION_CONFIG, type SessionConfig } from '../ports/session-config';
@@ -43,9 +44,11 @@ type Task = QueueTask<SessionTurnStep>;
  * with `position: 0`) and then the `session` itself. Queue events become
  * per-user `queue:update` / `session:start` / `session:end` and facade
  * commands `fade` / `session:start` / `session:end` / `drain`; touches of
- * the running session are streamed to the facade. A disconnected user
- * keeps the place for `disconnectGraceMs`; leaving `interactive` aborts
- * everything.
+ * the running session are streamed to the facade. A request from a phone
+ * that has not passed the location check is refused (`ELOCATION`); a
+ * user already in the queue keeps the place whatever the GPS says now.
+ * A disconnected user keeps the place for `disconnectGraceMs`; leaving
+ * `interactive` aborts everything.
  */
 @injectable()
 export class SessionService implements SessionApi {
@@ -62,6 +65,7 @@ export class SessionService implements SessionApi {
     @inject(ZagAppState) private readonly state: ZagAppState,
     @inject(CLIENT_GATEWAY) private readonly clients: ClientGateway,
     @inject(FACADE_GATEWAY) private readonly facade: FacadeGateway,
+    @inject(GEO_API) private readonly geo: GeoApi,
     @inject(LOGGER) logger: Logger,
   ) {
     this.logger = logger.child({ module: 'session' });
@@ -85,6 +89,7 @@ export class SessionService implements SessionApi {
       throw new SessionError('EBADMODE');
     }
     if (this.queue.hasUser(userId)) throw new SessionError('EQUEUED');
+    if (!this.geo.isAllowed(userId)) throw new SessionError('ELOCATION');
     const { fadeMs, sessionMs } = this.config;
     const sessionId = randomUUID();
     const copy = { mode: request.mode, params: { ...request.params } };

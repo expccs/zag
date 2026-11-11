@@ -81,6 +81,10 @@ export interface Messages {
     maintenance: Notice;
     /** `screen: 'disabled'`. Not in Figma. */
     disabled: Notice;
+    /** Location restriction (shared-modules.md § 1.3). Not in Figma. */
+    geoDenied: Notice;
+    geoFar: Notice;
+    geoUnknown: Notice;
     /** `45:3600` / `47:4007`: «з 18:00 до 22:00». */
     schedule: Notice & { from: string; to: string };
     /** `26:1957` / `47:4183`. */
@@ -250,6 +254,24 @@ const uk: Messages = {
     disabled: {
       title: 'Інтерактив вимкнено',
       body: 'Керування фасадом зараз недоступне. Завітайте іншим разом.',
+    },
+    geoDenied: {
+      title: 'Увімкніть геолокацію',
+      body:
+        'Інтерактив працює лише біля фасаду галереї. Дозвольте застосунку ' +
+        'доступ до геопозиції в налаштуваннях браузера та спробуйте ще раз.',
+    },
+    geoFar: {
+      title: 'Ви поза зоною',
+      body:
+        'Інтерактив доступний лише біля фасаду галереї ZAG. Підійдіть ' +
+        'ближче до будівлі.',
+    },
+    geoUnknown: {
+      title: 'Місце не визначено',
+      body:
+        'Телефон не передає геопозицію. Перевірте, що геолокацію ' +
+        'увімкнено, та зачекайте кілька секунд.',
     },
     schedule: {
       title: 'Графік роботи',
@@ -527,6 +549,24 @@ const en: Messages = {
     disabled: {
       title: 'Interactive is off',
       body: 'Facade control is unavailable right now. Please come back later.',
+    },
+    geoDenied: {
+      title: 'Turn on location',
+      body:
+        'The interactive works only next to the gallery facade. Allow the ' +
+        'app to use your location in the browser settings and try again.',
+    },
+    geoFar: {
+      title: 'You are out of range',
+      body:
+        'The interactive is available only next to the ZAG gallery ' +
+        'facade. Please move closer to the building.',
+    },
+    geoUnknown: {
+      title: 'Location unknown',
+      body:
+        'Your phone is not reporting its position. Check that location ' +
+        'services are on and wait a few seconds.',
     },
     schedule: {
       title: 'Operating hours',

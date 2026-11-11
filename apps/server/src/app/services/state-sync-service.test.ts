@@ -42,6 +42,10 @@ class FakeClients implements ClientGateway {
     this.notified.push(userId);
   }
 
+  notifyGeo(userId: string): void {
+    this.notified.push(userId);
+  }
+
   notifySessionStart(userId: string): void {
     this.notified.push(userId);
   }

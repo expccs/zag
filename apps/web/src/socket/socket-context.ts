@@ -5,6 +5,7 @@ import type {
   PublicState,
   ServerToClientEvents,
 } from '@zag/protocol';
+import type { GeoStore } from './geo-store';
 import type { SessionStore } from './session-store';
 
 export type ZagSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -20,6 +21,8 @@ export interface SocketContextValue {
   state: PublicState | null;
   /** The user's turn in the queue; read it with `useSession`. */
   session: SessionStore;
+  /** The location verdict; read it with `useGeo`. */
+  geoStore: GeoStore;
   /** Stable callbacks: safe as effect dependencies. */
   connect: () => void;
   disconnect: () => void;
