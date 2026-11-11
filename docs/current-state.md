@@ -45,6 +45,14 @@ Handoff log between agent sessions. Newest entry on top. See the
   link too: `Inline` gained `{ link: Brand; text; bold? }`
   (`i18n/messages.ts`), rendered by `MissionScreen` through `BrandLink`
   with `.link` (inherited colour, thin underline; not in Figma).
+  Also (uncommitted): Home got its second button from `8:3824` —
+  «Доторкнись і твори» / «Touch & Create» (`home.touch`) under «Місія та
+  філософія», `to={MODES_PATH}`; `.actions` stacks them with the 16 gap
+  and `.hero` has `padding-top: 3.5rem` so the title stays at y = 358.
+  Measured in headless Chrome (scratchpad `home-check.mjs`): title 358,
+  buttons 470 / 534 as in Figma. Note for such checks: the headless
+  profile keeps the service worker cache, use a fresh `--user-data-dir`
+  after a rebuild.
 - **Next step:** commit the logo links, re-run the CI `check` (sole-mode
   skip and http2/preload are in `459572e` / `062996e`); apply `http2
   on;` on the host nginx (`nginx -t && reload`).

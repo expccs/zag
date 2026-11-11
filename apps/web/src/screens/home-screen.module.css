@@ -1,6 +1,7 @@
 /* Home 8:3824 on the 393 × 852 grid: title 32/ExtraBold at y = 358 (two
-   lines, 80 high), button frame at y = 470 (gap 32), lang pill at (317, 96),
-   footer logos at y = 788. Background photo covers the whole viewport. */
+   lines, 80 high), button frames at y = 470 and 534 (gap 32 below the
+   title, 16 between them), lang pill at (317, 96), footer logos at
+   y = 788. Background photo covers the whole viewport. */
 .screen {
   position: relative;
   min-height: 100dvh;
@@ -26,13 +27,25 @@
   right: 1.25rem;
 }
 
+/* The hero block (title + buttons, 224 high) sits 28 below the centre of
+   the space between header and footer: padding-top 56 keeps the title at
+   y = 358 with both buttons. */
 .hero {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2rem;
+  padding-top: 3.5rem;
   text-align: center;
+}
+
+/* § 6.1: the two `button-home` pills stack with a 16 gap. */
+.actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
 }
 
 .title {

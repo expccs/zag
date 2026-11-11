@@ -63,6 +63,7 @@ export interface Messages {
   home: {
     title: string;
     mission: string;
+    touch: string;
   };
   mission: {
     title: string;
@@ -154,6 +155,7 @@ const uk: Messages = {
   home: {
     title: 'Створюй\nсвітлом',
     mission: 'Місія та філософія',
+    touch: 'Доторкнись і твори',
   },
   mission: {
     title: 'Mission\n& Philosophy',
@@ -434,6 +436,7 @@ const en: Messages = {
   home: {
     title: 'Create\nwith Light',
     mission: 'Mission & Philosophy',
+    touch: 'Touch & Create',
   },
   mission: {
     title: 'Mission\n& Philosophy',
